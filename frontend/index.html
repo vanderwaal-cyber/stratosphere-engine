@@ -545,6 +545,14 @@
                     desc = "Discovered via high-signal keywords."; // Hide debug JSON
                 }
 
+                // Status Badge Logic
+                let badgeClass = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+                let badgeText = 'NEW';
+                if (lead.status === 'processed') {
+                    badgeClass = 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+                    badgeText = 'ANALYZED';
+                }
+
                 el.innerHTML = `
                     <div class="relative w-12 h-12 flex-shrink-0">
                         <img src="${pfpUrl}" alt="${lead.project_name}" 
