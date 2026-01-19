@@ -166,6 +166,35 @@ async def read_stats(db: Session = Depends(get_db)):
         "needs_alt_outreach": alt
     }
 
+from fastapi.responses import StreamingResponse
+import io
+import csv
+
+@app.get("/leads/export")
+async def export_leads(run_id: Optional[str] = None, db: Session = Depends(get_db)):
+    query = db.query(LeadModel)
+    if run_id:
+        query = query.filter(LeadModel.run_id == run_id)
+    
+    leads = query.order_by(desc(LeadModel.created_at)).limit(2000).all()
+    
+    stream = io.StringIO()
+    writer = csv.writer(stream)
+    
+    # Headers
+    writer.writerow(["ID", "Project", "Website", "Twitter", "Status", "Bucket", "Email", "Run ID", "Found At"])
+    
+    for l in leads:
+        writer.writerow([
+            l.id, l.project_name, l.domain, l.twitter_handle, 
+            l.status, l.bucket, l.email, l.run_id, l.created_at
+        ])
+        
+    stream.seek(0)
+    response = StreamingResponse(iter([stream.getvalue()]), media_type="text/csv")
+    response.headers["Content-Disposition"] = f"attachment; filename=leads_export_{run_id or 'all'}.csv"
+    return response
+
 # Aliases for User Requirements
 app.add_api_route("/api/generate", trigger_pipeline, methods=["POST"])
 app.add_api_route("/api/status", get_pipeline_status, methods=["GET"])
