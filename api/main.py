@@ -161,7 +161,8 @@ def health_check():
 
 class RunRequest(BaseModel):
     mode: str = "fresh"
-    run_id: Optional[str] = None # Frontend can pass unique ID
+    run_id: Optional[str] = None
+    auto_pilot: bool = False
 
 @app.post("/pipeline/run")
 @limiter.limit("5/minute")
@@ -170,6 +171,9 @@ async def trigger_pipeline(request: Request, req: RunRequest = RunRequest(), bac
         if engine_instance.state["state"] == "running":
             return {"status": "busy", "message": "Pipeline already running"}
             
+        # Update engine state with auto_pilot pref
+        engine_instance.state["auto_pilot"] = req.auto_pilot
+        
         background_tasks.add_task(engine_instance.run, mode=req.mode, run_id=req.run_id)
         return {"status": "started", "message": f"Pipeline running in background ({req.mode})", "run_id": req.run_id}
     except Exception as e:

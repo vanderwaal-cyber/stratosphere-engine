@@ -155,6 +155,8 @@ class StratosphereEngine:
             if k in self.state: self.state[k] = v
         self.state["updated_at"] = datetime.utcnow().isoformat()
 
+from core.notifications import NotificationManager
+
     async def run(self, mode="fresh", run_id=None):
         self.stop_requested = False
         if not run_id: run_id = str(uuid.uuid4())[:8]
@@ -178,6 +180,20 @@ class StratosphereEngine:
             await asyncio.wait_for(self._run_collection_phase(mode, run_id), timeout=300)
             self.update_state("done", step="Complete", progress=100)
             
+            # NOTIFICATION
+            try:
+                notifier = NotificationManager()
+                await notifier.notify_run_completion(self.state["stats"]["new_added"], "Auto-Detected Source")
+            except Exception as ne:
+                self.logger.error(f"Notification Failed: {ne}")
+
+            # AUTO-PILOT LOOP
+            if self.state.get("auto_pilot", False):
+                self.update_state("idle", step="Auto-Pilot: Sleeping 4h...")
+                self.logger.info("Auto-Pilot active. Scheduling next run in 4 hours.")
+                # We schedule it as a background task to avoid blocking response
+                asyncio.create_task(self._schedule_next_run(14400)) # 4 hours
+
         except asyncio.TimeoutError:
             self.logger.warning("Global Timeout Exceeded. Stopping gracefully.")
             self.update_state("done", step="Timed Out (Partial Results)")
@@ -187,6 +203,11 @@ class StratosphereEngine:
         finally:
              self.state["completed_at"] = datetime.utcnow().isoformat()
              if self.stop_requested: self.update_state("done", step="Stopped by user")
+
+    async def _schedule_next_run(self, delay):
+        await asyncio.sleep(delay)
+        if not self.stop_requested:
+            await self.run(mode="fresh", run_id=f"auto-{uuid.uuid4().hex[:6]}")
 
     async def _run_collection_phase(self, mode, run_id):
         db = SessionLocal()
@@ -208,7 +229,7 @@ class StratosphereEngine:
             max_loops = 100 
             
             # STARTUP: Backfill existing leads
-            await self._backfill_enrichment(db)
+            # await self._backfill_enrichment(db)
             
             while self.state["stats"]["new_added"] < target_leads and self.state["stats"]["loops"] < max_loops:
                 if self.stop_requested: break
@@ -352,14 +373,14 @@ class StratosphereEngine:
             db.refresh(lead)
 
             # --- ENRICHMENT TRIGGER ---
-            try:
-                from enrichment.pipeline import EnrichmentPipeline
-                pipeline = EnrichmentPipeline(db)
-                await pipeline.process_lead(lead)
-                db.commit() # Save Qualification Status
-                self.logger.info(f"✨ Ingested & Enriched: {lead.project_name} -> {lead.bucket}")
-            except Exception as ev:
-                self.logger.error(f"Enrichment Error for {lead.project_name}: {ev}")
+            # try:
+            #     from enrichment.pipeline import EnrichmentPipeline
+            #     pipeline = EnrichmentPipeline(db)
+            #     await pipeline.process_lead(lead)
+            #     db.commit() # Save Qualification Status
+            #     self.logger.info(f"✨ Ingested & Enriched: {lead.project_name} -> {lead.bucket}")
+            # except Exception as ev:
+            #     self.logger.error(f"Enrichment Error for {lead.project_name}: {ev}")
             
             self.state["stats"]["new_added"] += 1
             self.state["discovered"] += 1
@@ -371,16 +392,17 @@ class StratosphereEngine:
             return False
 
     async def _backfill_enrichment(self, db):
-        """Processes any 'New' leads that might have been missed."""
-        from enrichment.pipeline import EnrichmentPipeline
-        pipeline = EnrichmentPipeline(db)
-        
-        pending = db.query(Lead).filter(Lead.status == "New").limit(50).all()
-        if pending:
-             self.logger.info(f"🔄 Backfilling Enrichment for {len(pending)} leads...")
-             for p in pending:
-                 await pipeline.process_lead(p)
-             db.commit()
+        pass
+        # """Processes any 'New' leads that might have been missed."""
+        # from enrichment.pipeline import EnrichmentPipeline
+        # pipeline = EnrichmentPipeline(db)
+        # 
+        # pending = db.query(Lead).filter(Lead.status == "New").limit(50).all()
+        # if pending:
+        #      self.logger.info(f"🔄 Backfilling Enrichment for {len(pending)} leads...")
+        #      for p in pending:
+        #          await pipeline.process_lead(p)
+        #      db.commit()
         try:
             log = RunLog(component=component, level=level, message=message)
             db.add(log)

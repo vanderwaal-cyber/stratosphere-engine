@@ -201,6 +201,21 @@
                     class="hidden px-5 py-2.5 rounded-xl text-xs font-bold text-red-200 bg-red-500/20 border border-red-500/30 hover:bg-red-500/30 transition-all shadow-[0_0_15px_rgba(239,68,68,0.2)]">STOP
                     SYSTEM</button>
 
+                <div class="flex items-center gap-2 mr-3 border-r border-white/10 pr-3 h-8">
+                    <label class="flex items-center gap-2 cursor-pointer group">
+                        <input type="checkbox" id="auto-pilot-toggle" class="peer sr-only">
+                        <div
+                            class="w-9 h-5 bg-white/10 rounded-full peer-checked:bg-emerald-500 transition-all relative shadow-inner">
+                            <div
+                                class="absolute top-1 left-1 w-3 h-3 bg-gray-300 rounded-full transition-all peer-checked:translate-x-4 peer-checked:bg-white shadow">
+                            </div>
+                        </div>
+                        <span
+                            class="text-[10px] font-bold text-gray-400 peer-checked:text-emerald-300 transition-colors uppercase tracking-wider group-hover:text-white flex items-center gap-1"><i
+                                data-lucide="plane" class="w-3 h-3"></i> Auto-Pilot</span>
+                    </label>
+                </div>
+
                 <button onclick="window.open('/leads/export?run_id=' + (currentRunId || ''), '_blank')"
                     class="p-3.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:scale-105 active:scale-95 transition-all text-gray-400 hover:text-white group"
                     title="Export CSV">
@@ -399,7 +414,12 @@
 
         async function handleGenerate() {
             if (isRunning) return;
-            setLoadingState(true, "Radar Active: Initializing...");
+
+            // Check Auto-Pilot
+            const autoPilotToggle = $('auto-pilot-toggle');
+            const isAuto = autoPilotToggle ? autoPilotToggle.checked : false;
+
+            setLoadingState(true, isAuto ? "Auto-Pilot: Initializing..." : "Radar Active: Initializing...");
             currentRunId = generateUUID();
 
             renderSkeletons(); // SHOW SKELETONS
@@ -411,7 +431,7 @@
                 const res = await fetch(`${API_URL}/pipeline/run`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ mode: mode, run_id: currentRunId })
+                    body: JSON.stringify({ mode: mode, run_id: currentRunId, auto_pilot: isAuto })
                 });
 
                 if (!res.ok) throw new Error("Server refused connection");
