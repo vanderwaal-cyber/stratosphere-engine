@@ -123,28 +123,21 @@ class LeadBatchGenerator:
 class StratosphereEngine:
     def __init__(self):
         self.logger = app_logger
-                self.state["stats"]["loops"] += 1
-                loop_idx = self.state["stats"]["loops"]
-                
-                # Dynamic Progress
-                pct = min(95, int((self.state["stats"]["new_added"] / target_leads) * 100))
-                
-                # Update State for UI consumption
-                self.update_state(step=f"Mining Batch {loop_idx}...", progress=pct)
-                
-                for c in collectors:
-                    if self.stop_requested: break
-                    try:
-                        # Pass a callback to updated collectors so they can report "Scanning: 'Solana defi'"
-                        leads = await c.run(self.update_state)
-                        
-                        found_count = len(leads)
-                        self.logger.info(f"Collector {c.name} found {found_count} leads")
-                        self.state["stats"]["total_scraped"] += found_count
-                        
-                        if found_count == 0:
-                             self.update_state(step=f"{c.name}: No results found. Retrying...", progress=pct)
-                             await asyncio.sleep(2) # Prevent rapid loop on fail
+        self.stop_requested = False
+        self.state = {
+            "state": "idle",
+            "run_id": "",
+            "started_at": None,
+            "updated_at": datetime.utcnow().isoformat(),
+            "completed_at": None,
+            "discovered": 0,
+            "progress": 0,
+            "current_step": "Ready",
+            "stats": {
+                "new_added": 0,
+                "duplicates_skipped": 0,
+                "failed_ingestion": 0,
+                "total_scraped": 0,
                 "loops": 0
             }
         }
@@ -226,13 +219,21 @@ class StratosphereEngine:
                     if self.state["stats"]["new_added"] >= target_leads: break
                     
                     try: 
-                        self.update_state(target=c.name)
-                        leads = await c.run()
-                        if leads:
+                        # Update State: "Scanning 'Solana defi'..." (handled by callback in collector)
+                        leads = await c.run(self.update_state) 
+                        
+                        found_count = len(leads)
+                        self.state["stats"]["total_scraped"] += found_count
+                        
+                        if found_count > 0:
                             found_any_in_loop = True
                             for raw in leads:
                                 if self.state["stats"]["new_added"] >= target_leads: break
                                 await self._process_lead(db, raw, run_id)
+                        else:
+                            # Feedback for empty result
+                             self.update_state(step=f"{c.name}: No results found. Retrying...", progress=pct)
+                             await asyncio.sleep(2) 
                                 
                     except Exception as e:
                         self.logger.error(f"Collector {c.name} failed: {e}")
