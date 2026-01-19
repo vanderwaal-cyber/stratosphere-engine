@@ -149,6 +149,13 @@
                     Stop Run
                 </button>
 
+                <!-- Run Mode Selector -->
+                <select id="run-mode"
+                    class="bg-surfaceHighlight border border-white/5 text-gray-300 text-sm rounded-lg px-3 py-2.5 outline-none focus:border-primary/50 transition-colors cursor-pointer hover:bg-white/5">
+                    <option value="fresh">Fresh Scrape</option>
+                    <option value="refresh">Re-Scan All</option>
+                </select>
+
                 <button id="btn-generate"
                     class="relative group px-6 py-2.5 rounded-lg bg-white text-black font-semibold text-sm shadow-lg shadow-white/5 hover:shadow-primary/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden">
                     <span class="relative z-10 flex items-center gap-2">
@@ -268,7 +275,8 @@
                 </div>`;
 
             try {
-                const mode = document.getElementById('run-mode').value;
+                const modeSelect = document.getElementById('run-mode');
+                const mode = modeSelect ? modeSelect.value : 'fresh';
                 const res = await fetch(`${API_URL}/pipeline/run`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
