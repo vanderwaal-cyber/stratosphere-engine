@@ -9,6 +9,7 @@ from storage.models import Lead, LeadSource, RunLog
 from collectors.defillama import DeFiLlamaCollector
 from collectors.cryptorank import CryptoRankCollector
 from collectors.x_keywords import XKeywordCollector
+from collectors.search import UniversalSearchCollector
 from enrichment.pipeline import EnrichmentPipeline
 from core.logger import app_logger
 import urllib.parse
@@ -99,9 +100,10 @@ class StratosphereEngine:
         db = SessionLocal()
         try:
             # 1. Collection Loop - Keep going until 100 New or Timeout
+            # Priority: Universal Search (Infinite) > DeFiLlama > X Signals
             collectors = [
+                UniversalSearchCollector(),
                 DeFiLlamaCollector(),
-                CryptoRankCollector(),
                 XKeywordCollector(),
             ]
             
