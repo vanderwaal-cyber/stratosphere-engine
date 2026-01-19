@@ -17,11 +17,11 @@ class Engine:
             
             # ... Inside Ingestion Loop ...
             # ...
-                    if exists:
-                        if mode == "refresh":
-                             leads_to_enrich.append(existing_lead)
-                        else:
-                             self.state["stats"]["duplicates_skipped"] += 1
+                if exists:
+                    if mode == "refresh":
+                        leads_to_enrich.append(existing_lead)
+                    else:
+                        self.state["stats"]["duplicates_skipped"] += 1
                         continue
                         
                     # It's New
