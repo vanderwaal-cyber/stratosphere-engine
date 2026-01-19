@@ -1,10 +1,18 @@
 import asyncio
 import random
+import time
 import uuid
+import urllib.parse
+from datetime import datetime
 from sqlalchemy.orm import Session
 from storage.database import SessionLocal
-from storage.models import Lead
+from storage.models import Lead, LeadSource, RunLog
 from collectors.x_keywords import XKeywordCollector
+from collectors.defillama import DeFiLlamaCollector
+from collectors.search import UniversalSearchCollector
+from collectors.github import GithubCollector
+from collectors.launchpads import LaunchpadCollector
+from core.logger import app_logger
 
 # Batching & Lead Generation Logic
 class LeadBatchGenerator:
@@ -44,24 +52,55 @@ class LeadBatchGenerator:
             collector = XKeywordCollector()
             while found_count < self.batch_size:
                 keyword, location = self.current_search_params()
-                candidates = collector.scrape_profiles(keyword=keyword, location=location)
+                loop = asyncio.new_event_loop()
+                try:
+                    asyncio.set_event_loop(loop)
+                    candidates = loop.run_until_complete(collector.run())
+                finally:
+                    asyncio.set_event_loop(None)
+                    loop.close()
                 for c in candidates:
-                    # Deduplication by unique external id or url
-                    if db.query(Lead).filter((Lead.external_id == c["external_id"]) | (Lead.url == c["url"])).first():
+                    get_val = c.get if isinstance(c, dict) else lambda k: getattr(c, k, None)
+
+                    project_name = get_val("name") or get_val("username") or "Unknown"
+                    norm_handle = None
+                    username = get_val("username") or get_val("twitter_handle")
+                    if username:
+                        norm_handle = username.lower().replace("@", "").strip()
+
+                    norm_domain = None
+                    raw_url = get_val("url") or get_val("website")
+                    if raw_url:
+                        try:
+                            parsed = urllib.parse.urlparse(raw_url if raw_url.startswith("http") else f"https://{raw_url}")
+                            norm_domain = parsed.netloc.replace("www.", "").lower()
+                        except Exception:
+                            norm_domain = None
+
+                    existing = None
+                    if norm_handle:
+                        existing = db.query(Lead).filter(Lead.normalized_handle == norm_handle).first()
+                    if not existing and norm_domain:
+                        existing = db.query(Lead).filter(Lead.normalized_domain == norm_domain).first()
+
+                    if existing:
                         duplicate_streak += 1
                         if duplicate_streak > self.max_consecutive_duplicates:
                             self.rotate_search()
                             duplicate_streak = 0
                         continue
-                    # Ensure profile_image_url is captured
+
                     lead = Lead(
-                        name=c.get("name"),
-                        username=c.get("username"),
-                        url=c.get("url"),
-                        external_id=c.get("external_id"),
-                        profile_image_url=c.get("profile_image_url", ""),  # Store image url
-                        added_by="engine-batch-{}".format(uuid.uuid4()),
-                        ready_to_dm=False
+                        project_name=project_name[:100],
+                        domain=raw_url,
+                        normalized_domain=norm_domain,
+                        twitter_handle=f"@{norm_handle}" if norm_handle else None,
+                        normalized_handle=norm_handle,
+                        status="New",
+                        description=str(c)[:500],
+                        source_counts=1,
+                        created_at=datetime.utcnow(),
+                        run_id=f"engine-batch-{uuid.uuid4()}",
                     )
                     db.add(lead)
                     db.commit()  # Insert one at a time to keep DB state updated
@@ -74,21 +113,6 @@ class LeadBatchGenerator:
         finally:
             db.close()
         return new_leads  # Each Lead here includes profile_image_url
-
-import time
-import uuid
-import random
-from datetime import datetime
-from sqlalchemy.orm import Session
-from storage.database import SessionLocal
-from storage.models import Lead, LeadSource, RunLog
-from collectors.defillama import DeFiLlamaCollector
-from collectors.x_keywords import XKeywordCollector
-from collectors.search import UniversalSearchCollector
-from collectors.github import GithubCollector
-from collectors.launchpads import LaunchpadCollector
-from core.logger import app_logger
-import urllib.parse
 
 class StratosphereEngine:
     def __init__(self):
