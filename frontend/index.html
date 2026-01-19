@@ -90,7 +90,43 @@
             overflow: hidden;
         }
 
-        /* ... existing keyframes ... */
+        @keyframes shine {
+            0% {
+                transform: translateX(-100%);
+            }
+
+            100% {
+                transform: translateX(100%);
+            }
+        }
+
+        @keyframes snap-fade-in {
+            0% {
+                opacity: 0;
+                transform: translateY(10px) scale(0.98);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @keyframes pulse-soft {
+
+            0%,
+            100% {
+                opacity: 0.6;
+            }
+
+            50% {
+                opacity: 1;
+            }
+        }
+
+        .snap-fade-in {
+            animation: snap-fade-in 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        }
 
         .skeleton-pulse {
             animation: pulse-soft 1.5s infinite ease-in-out;
