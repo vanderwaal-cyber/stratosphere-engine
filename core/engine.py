@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
-
+from storage.database import SessionLocal
+from storage.models import Lead
 class Engine:
     async def _run_logic(self, mode):
         db = SessionLocal()
