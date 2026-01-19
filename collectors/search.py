@@ -16,151 +16,110 @@ class UniversalSearchCollector(BaseCollector):
             "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
         ]
         
-        # 50+ Rotating Queries for Infinite Variety
-        self.base_queries = [
-            "new crypto project waitlist",
-            "join early access web3",
-            "stealth defi protocol announcing",
-            "upcoming solana airdrop",
-            "base chain new tokens",
-            "crypto presale live now",
-            "new meme coin launchpad",
-            "berachain ecosystem projects",
-            "monad ecosystem early",
-            "crypto seed round announced",
-            "web3 gaming beta signup",
-            "decentralized exchange coming soon",
-            "yield aggregator v2 launch",
-            "ai crypto project whitepaper",
-            "rwa protocol tokenization",
-            "crypto infrastructure startup backed by",
-            "testnet live incentivized",
-            "mainnet launch countdown crypto",
-            "new nft marketplace alpha",
-            "web3 social app waitlist"
+        # KEYWORD PERMUTATION ENGINE
+        # We combine these to form thousands of queries
+        self.niches = [
+            "crypto", "defi", "web3", "memecoin", "nft", "dao", "L2", "zk", "ai agent", "depin", "rwa"
+        ]
+        
+        self.types = [
+            "protocol", "labs", "finance", "exchange", "swap", "network", "foundation", "app", "game"
+        ]
+        
+        self.actions = [
+            "waitlist", "early access", "launching soon", "airdrop confirmed", "testnet live", "beta signup"
         ]
         
         self.modifiers = [
             "site:twitter.com",
-            "site:medium.com",
-            "site:mirror.xyz",
-            "-site:youtube.com" # Noise
+            "site:x.com"
         ]
 
     async def collect(self) -> List[RawLead]:
         leads = []
         try:
-            # Pick 5 random queries (Increased from 3)
-            chosen_queries = random.sample(self.base_queries, 5)
-            
-            for q in chosen_queries:
-                # 50% chance to add a site modifier for specificity
-                if random.random() > 0.5:
-                    q += " " + random.choice(self.modifiers)
-                    
-                self.logger.info(f"🔎 Universal Search: '{q}' (Pagination: ON)")
+            # Generate 8 random query permutations per run
+            queries = []
+            for _ in range(8):
+                niche = random.choice(self.niches)
+                typ = random.choice(self.types)
+                action = random.choice(self.actions)
                 
-                # Pagination Loop (5 Pages Depth)
+                # Format: "defi protocol waitlist site:twitter.com"
+                q = f"{niche} {typ} {action}"
+                if random.random() > 0.3: # 70% chance to force Twitter site search
+                    q += " " + random.choice(self.modifiers)
+                queries.append(q)
+            
+            for q in queries:
+                self.logger.info(f"🔎 Deep Search: '{q}'")
+                
+                # We scrape 1-3 pages deep per query
                 current_url = f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(q)}&kl=us-en"
                 
-                for page_num in range(1, 6): # Pages 1 to 5
-                    self.logger.info(f"  -> Page {page_num}...")
+                for page_num in range(1, 4):
+                    # Rate limit jitter
+                    await asyncio.sleep(random.uniform(2.5, 5.0))
                     
-                    # Random delay
-                    await asyncio.sleep(random.uniform(2.0, 4.0))
+                    html = await self.fetch_page(current_url)
+                    if not html or "No results" in html: break
                     
-                    headers = {'User-Agent': random.choice(self.user_agents)}
-                    html = await self.fetch_page(current_url) 
-                    
-                    if not html or "No results" in html:
-                        break
-
                     soup = BeautifulSoup(html, 'html.parser')
                     results = soup.find_all('div', class_='result')
                     
-                    page_leads_count = 0
+                    page_found = 0
                     for res in results:
                         title_tag = res.find('a', class_='result__a')
-                        snippet_tag = res.find('a', class_='result__snippet')
                         if not title_tag: continue
                         
                         title = title_tag.get_text(strip=True)
                         link = title_tag.get('href', '')
-                        snippet = snippet_tag.get_text(strip=True) if snippet_tag else ""
                         
-                        # 1. Parsing Logic
-                        name = self._extract_name(title)
-                        if not name or len(name) > 40: continue
-                        
-                        # 2. Heuristics
-                        combined_text = (title + " " + snippet).lower()
-                        keywords = ['crypto', 'web3', 'defi', 'token', 'chain', 'protocol', 'dao', 'nft', 'wallet', 'ledger']
-                        if not any(k in combined_text for k in keywords):
-                            continue
-                            
-                        # 3. Create Lead
-                        lead = RawLead(
-                            name=name,
-                            source=f"universal_search_p{page_num}",
-                            website=link if "http" in link else None,
-                            extra_data={
-                                "query": q,
-                                "context": title,
-                                "snippet": snippet[:100]
-                            }
-                        )
-                        
-                        # Handle extraction
+                        # 1. Verification: MUST be a Twitter/X link if looking for handle
+                        handle = None
                         if "twitter.com" in link or "x.com" in link:
                              m = re.search(r'(?:twitter\.com|x\.com)/([a-zA-Z0-9_]+)', link)
-                             if m: lead.twitter_handle = m.group(1)
-                             
-                        leads.append(lead)
-                        page_leads_count += 1
+                             if m: 
+                                 handle = m.group(1)
+                                 if handle.lower() in ['search', 'home', 'explore', 'notifications']: continue # Skip system pages
                         
-                    # Find Next Page
-                    # DDG HTML has a form with <input name="s"> and <input name="dc">
+                        # 2. Heuristics for non-twitter links (project sites)
+                        # Only accept if description contains strong keywords
+                        
+                        if not handle and "http" in link:
+                             # We only want High Confidence leads now.
+                             # If it's a random site, we might skip unless title is very clear
+                             pass
+                        
+                        if handle:
+                            # Clean Name
+                            name = handle
+                            # Try to get nicer name from title "Project Name (@handle) on X"
+                            if "(" in title: 
+                                name = title.split("(")[0].strip()
+                            elif " on Twitter" in title:
+                                name = title.split(" on Twitter")[0].strip()
+                                
+                            leads.append(RawLead(
+                                name=name,
+                                source=f"deep_search_q_{q.replace(' ', '_')[:10]}",
+                                website=link,
+                                twitter_handle=handle,
+                                extra_data={"query": q, "title": title}
+                            ))
+                            page_found += 1
+                            
+                    # Next Page
                     next_form = soup.find('form', action='/html/')
-                    if not next_form or "next" not in next_form.get_text().lower():
-                         # No next page
-                         break
-                         
-                    # Extract hidden inputs for next page
+                    if not next_form: break
                     inputs = next_form.find_all('input', type='hidden')
                     params = {i.get('name'): i.get('value') for i in inputs}
-                    params['q'] = q # Ensure q is preserved
+                    params['q'] = q 
+                    current_url = f"https://html.duckduckgo.com/html/?{urllib.parse.urlencode(params)}"
                     
-                    # Construct next URL
-                    query_string = urllib.parse.urlencode(params)
-                    current_url = f"https://html.duckduckgo.com/html/?{query_string}"
+                    if page_found == 0: break
                     
-                    if page_leads_count == 0:
-                        break # Stop if current page yielded nothing helpful
-            
-            self.logger.info(f"✅ Universal Search found {len(leads)} candidates")
-            
         except Exception as e:
-            self.logger.error(f"Universal Search failed: {e}")
+            self.logger.error(f"Deep Search Error: {e}")
             
         return leads
-
-    def _extract_name(self, title):
-        # "Monad - The high performance L1" -> "Monad"
-        # "Announcing the launch of Berachain" -> "Berachain" (harder)
-        
-        # Simple splitters
-        splitters = [':', '|', '-', '–', '—', ' announces ', ' raises ', ' launches ']
-        for s in splitters:
-            if s in title:
-                parts = title.split(s)
-                # Usually the Name is the first part, unless it's "Announcing X"
-                candidate = parts[0].strip()
-                if len(candidate.split()) < 5:
-                     return candidate
-        
-        # Fallback: Just take first 3 words
-        words = title.split()
-        if len(words) <= 3:
-            return title
-            
-        return None
