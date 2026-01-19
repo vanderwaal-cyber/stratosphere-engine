@@ -310,11 +310,83 @@
             }
         }
 
-        // ... (stopPipeline is same) ...
+        async function stopPipeline() {
+            if (!confirm("Are you sure you want to stop the engine?")) return;
+            try {
+                await fetch(`${API_URL}/pipeline/stop`, { method: 'POST' });
+                setLoadingState(false, "Stopping...");
+                setTimeout(fetchData, 1000);
+            } catch (e) {
+                alert("Failed to stop: " + e.message);
+            }
+        }
 
-        // ... (setFilter is same) ...
+        function setFilter(bucket) {
+            currentFilter = bucket;
+            // Update UI Tabs
+            document.querySelectorAll('button[id^="tab-"]').forEach(btn => {
+                btn.classList.remove('bg-surfaceHighlight', 'text-white', 'shadow-sm', 'border-white/10');
+                btn.classList.add('text-gray-400', 'hover:text-white');
+            });
 
-        // ... (startPolling, pollStatus same) ...
+            let activeId = 'tab-all';
+            if (bucket === 'READY_TO_DM') activeId = 'tab-ready';
+            if (bucket === 'NEEDS_ALT_OUTREACH') activeId = 'tab-ai';
+
+            const activeBtn = document.getElementById(activeId);
+            activeBtn.classList.remove('text-gray-400', 'hover:text-white');
+            activeBtn.classList.add('bg-surfaceHighlight', 'text-white', 'shadow-sm', 'border-white/10');
+
+            fetchData();
+        }
+
+        function startPolling() {
+            if (pollingInterval) return;
+            // Immediate check
+            pollStatus();
+            pollingInterval = setInterval(pollStatus, 2000);
+        }
+
+        async function pollStatus() {
+            try {
+                const res = await fetch(`${API_URL}/pipeline/status`);
+                const state = await res.json();
+
+                const bar = document.getElementById('progress-bar');
+                const container = document.getElementById('progress-container');
+                const loadingText = document.getElementById('loading-text');
+
+                if (state.state === 'running') {
+                    if (!isRunning) setLoadingState(true, state.current_step || "Processing...");
+                    container.classList.remove('hidden');
+                    // Smooth progress
+                    bar.style.width = `${state.progress}%`;
+                    loadingText.textContent = `${state.current_step} (${state.progress}%)`;
+
+                    // Live Update stats
+                    updateStats(state);
+                } else {
+                    if (isRunning) {
+                        // Just finished
+                        setLoadingState(false);
+                        container.classList.add('hidden');
+                        bar.style.width = '0%';
+                        fetchData(); // Final Refresh
+
+                        if (state.state === 'error') {
+                            alert("Engine Error: " + state.current_step);
+                        } else if (state.state === 'done' && state.run_id === currentRunId) {
+                            // Only notify if it was OUR run
+                            // Optional toast?
+                        }
+                    }
+                    clearInterval(pollingInterval);
+                    pollingInterval = null;
+                }
+            } catch (e) {
+                console.error("Poll Error", e);
+            }
+        }
 
         async function fetchData() {
             try {
