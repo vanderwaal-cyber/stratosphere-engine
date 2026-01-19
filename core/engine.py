@@ -213,16 +213,23 @@ class StratosphereEngine:
         db = SessionLocal()
         try:
             # --- CONFIGURATION ---
-            # Modern User-Agents Rotation
+            # Expanded Professional User-Agents (Mac, Windows, iOS, Android)
             USER_AGENTS = [
+                # Desktop
                 "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/121.0",
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0",
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15",
+                # Mobile / Tablet
+                "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1",
+                "Mozilla/5.0 (iPad; CPU OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1",
+                "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+                "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1",
                 "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             ]
-            
-            # --- NICHE SCHEDULE (28 Rotations) ---
+
+            # --- NICHE SCHEDULE & VARIANTS ---
             NICHE_SCHEDULE = [
                 # Week 1: Crypto & Web3
                 "Solana Validators", "DeFi Protocol Leads", "NFT Market Makers", "DAO Treasurers", "Crypto VC Partners", "GameFi Developers", "Launchpad Founders",
@@ -233,6 +240,16 @@ class StratosphereEngine:
                 # Week 4: Niche Agencies
                 "Solar Energy CEOs", "Medical Spa Owners", "Luxury Real Estate", "Yacht Brokerages", "Private Jet Charters", "High-End Interior Design", "Ecom Aggregators"
             ]
+            
+            # Map strict keywords to broader/alternative search terms if blocked or dry
+            NICHE_VARIANTS = {
+                "Solana Validators": ["Solana Node Operators", "SOL Validators", "Solana Staking Providers", "Solana RPC Nodes"],
+                "DeFi Protocol Leads": ["DeFi Founders", "DEX Developers", "Liquidity Protocol Owners", "Yield Farming Devs"],
+                "NFT Market Makers": ["NFT Liquidity Providers", "NFT Floor Sweepers", "Digital Asset Traders"],
+                "DAO Treasurers": ["DAO Signers", "Governance Delegates", "Web3 Treasury Managers"],
+                "Crypto VC Partners": ["Web3 Investors", "Blockchain Venture Capital", "Crypto Angels"],
+                # Fallback generator for others
+            }
             
             # Load Persistent State
             state_data = self._load_rotation_state()
@@ -259,45 +276,32 @@ class StratosphereEngine:
                 pct = int((self.state["stats"]["new_added"] / TARGET_NEW_LEADS) * 100)
                 self.update_state(step=f"Scanning Niche: '{current_keyword}' ({self.state['stats']['new_added']}/{TARGET_NEW_LEADS})", progress=pct)
                 
-                # Human Jitter: Random Sleep between 3-7 seconds to avoid bot detection
-                sleep_time = random.uniform(3, 7)
+                # Human Jitter: Slower 4-9s sleep for maximum stealth
+                sleep_time = random.uniform(4, 9)
                 self.logger.info(f"😴 Human Jitter: Sleeping for {sleep_time:.1f}s...")
                 await asyncio.sleep(sleep_time)
                 
-                # Header Rotation
+                # Header Rotation (Pick one for this request)
                 current_ua = random.choice(USER_AGENTS)
-                # Note: Ideally pass this to collector, but assuming collector handles it or we set global
-                # For now, we simulate by logging, as search_collector.collect might need update to accept headers
-                # We will just proceed with the query override logic
                 
-                # Dynamic Query Construction
-                queries = [
-                    f'"{current_keyword}" site:twitter.com',
-                    f'"{current_keyword}" "founder" site:twitter.com',
-                    f'"{current_keyword}" "owner" site:twitter.com'
-                ]
-                query = random.choice(queries)
+                # Construct Query List (Primary + Variants if needed)
+                queries_to_try = [f'"{current_keyword}" site:twitter.com']
+                
+                # Add intelligent variants if defined
+                if current_keyword in NICHE_VARIANTS:
+                    for v in NICHE_VARIANTS[current_keyword]:
+                        queries_to_try.append(f'"{v}" site:twitter.com')
+                else:
+                    # Generic Fallbacks
+                    queries_to_try.append(f'"{current_keyword}" "Founder" site:twitter.com')
+                    queries_to_try.append(f'"{current_keyword}" "Owner" site:twitter.com')
+
+                # Randomize slightly to avoid pattern detection
+                query = random.choice(queries_to_try)
 
                 try:
                     leads = await search_collector.collect(query_override=[query])
                     found_count = len(leads)
-                    
-                    # --- DEEP SCAN FALLBACK ---
-                    if found_count == 0:
-                        self.logger.warning(f"⚠️ Standard Scan failed for '{current_keyword}'. Initiating Deep Scan...")
-                        self.update_state(step=f"Deep Scan: '{current_keyword}' (Retrying...)", progress=pct)
-                        
-                        deep_queries = [
-                            f'{current_keyword} "Twitter" site:twitter.com',
-                            f'{current_keyword} "LinkedIn" site:linkedin.com',
-                            f'{current_keyword} "Bluesky" site:bsky.app'
-                        ]
-                        deep_query = random.choice(deep_queries)
-                        await asyncio.sleep(2) # Extra pause
-                        leads = await search_collector.collect(query_override=[deep_query])
-                        found_count = len(leads)
-                    
-                    self.state["stats"]["total_scraped"] += found_count
                     
                     found_new_in_batch = False
                     
@@ -307,25 +311,47 @@ class StratosphereEngine:
                             is_new = await self._process_lead(db, raw, run_id)
                             if is_new:
                                 found_new_in_batch = True
-                                # UI UPDATE TRIGGERED INSIDE _process_lead NOW
-                                # re-calculate pct for instant feedback
                                 pct = int((self.state["stats"]["new_added"] / TARGET_NEW_LEADS) * 100)
                                 self.update_state(step=f"Scanning Niche: '{current_keyword}' ({self.state['stats']['new_added']}/{TARGET_NEW_LEADS})", progress=pct)
 
                     if not found_new_in_batch:
-                        self.logger.info("Batch yielded no new leads after Deep Scan. Sleeping constraints.")
-                        await asyncio.sleep(2)
+                        # If Primary failed, try a specific Deep Variant immediately if we haven't just tried it
+                        if found_count == 0:
+                            self.logger.warning(f"⚠️ Zero results for '{query}'. Attempting Deep Variant...")
+                            self.update_state(step=f"Deep Scan: '{current_keyword}' (Variant Retry...)", progress=pct)
+                            
+                            # Pick a different variant from the list
+                            retry_query = random.choice(queries_to_try) 
+                            if retry_query == query and len(queries_to_try) > 1:
+                                # Try to pick a different one
+                                for q in queries_to_try:
+                                    if q != query: 
+                                        retry_query = q
+                                        break
+                            
+                            await asyncio.sleep(3) # Pause before retry
+                            leads = await search_collector.collect(query_override=[retry_query])
+                            found_count = len(leads)
+                            
+                            if found_count > 0:
+                                for raw in leads:
+                                    if self.state["stats"]["new_added"] >= TARGET_NEW_LEADS: break
+                                    if await self._process_lead(db, raw, run_id): found_new_in_batch = True
+
+                        if not found_new_in_batch:
+                            self.logger.info("Batch yielded no new leads. Sleeping constraints.")
+                            await asyncio.sleep(2)
                         
                 except Exception as e:
                     self.logger.error(f"Search Loop Error: {e}")
                     await asyncio.sleep(1)
 
-                # Safety Limit (Prevent infinite spinning if niche is dry)
-                if self.state["stats"]["loops"] > 30: # Max 30 Search pages per click
+                # Safety Limit
+                if self.state["stats"]["loops"] > 40: # Increased limit for variants
                     self.logger.warning(f"Batch limit reached for {current_keyword}.")
                     break
             
-            # End of Run: Advance Cursor ONLY if we found something (or if user forced it)
+            # End of Run: Advance Cursor
             next_index = (current_index + 1) % len(NICHE_SCHEDULE)
             self._save_rotation_state(next_index)
             self.logger.info(f"✅ Batch Complete. Rotated Cursor to Index {next_index}.")
