@@ -521,9 +521,7 @@
                 // Avatar Logic
                 const handle = lead.twitter_handle ? lead.twitter_handle.replace('@', '') : '';
                 const avatarUrl = lead.profile_image_url || (handle ? `https://unavatar.io/twitter/${handle}` : null);
-                const avatarHtml = avatarUrl
-                    ? `<img src="${avatarUrl}" onerror="this.onerror=null;this.src='https://ui-avatars.com/api/?name=${lead.project_name}&background=random&color=fff'" class="w-12 h-12 rounded-full object-cover border border-white/10 shadow-sm">`
-                    : `<div class="w-12 h-12 rounded-full bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center border border-white/10 text-sm font-bold">${lead.project_name.substring(0, 2).toUpperCase()}</div>`;
+                const pfpUrl = avatarUrl || `https://ui-avatars.com/api/?name=${lead.project_name}&background=random&color=fff`;
 
                 // Clean Description
                 let desc = lead.description || "No info available.";
