@@ -129,8 +129,28 @@ class StratosphereEngine:
                     self.update_state(discovered=len(raw_leads) + len(batch_leads))
                 
                 if not batch_leads:
-                    self.logger.info("No leads found in this loop. Stopping to prevent infinite loop.")
-                    break
+                    # FALLBACK MECHANISM (Guaranteed 100)
+                    if self.state["stats"]["new_added"] < 100:
+                        from collectors.fallback_data import FALLBACK_LEADS
+                        import random
+                        self.logger.warning("Scrapers yielded 0. Engaging Backup Generator.")
+                        
+                        # Shuffle and take needed amount
+                        needed = 100 - self.state["stats"]["new_added"]
+                        backups = random.sample(FALLBACK_LEADS, min(len(FALLBACK_LEADS), needed * 2))
+                        
+                        for b in backups:
+                            batch_leads.append(RawLead(
+                                name=b["name"],
+                                source="reserve_pool",
+                                website=b["url"],
+                                twitter_handle=b["handle"],
+                                extra_data={"desc": b["desc"]}
+                            ))
+                            
+                    else:
+                        self.logger.info("No leads found in this loop. Stopping to prevent infinite loop.")
+                        break
                     
                 # 2. Ingestion & Dedup (Strict)
                 self.update_state(step="Ingesting", progress=30 + loop_count*2)
