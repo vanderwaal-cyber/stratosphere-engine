@@ -32,12 +32,14 @@ async def startup_db():
             # 1. Try Postgres (Ideal for Prod)
             conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS run_id VARCHAR"))
             conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS profile_image_url VARCHAR"))
+            conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS score INTEGER DEFAULT 0"))
             conn.commit()
             print("Migration (Postgres) success.")
         except Exception:
             try:
                 # 2. Try SQLite (Local) - No IF NOT EXISTS
                 conn.execute(text("ALTER TABLE leads ADD COLUMN run_id VARCHAR"))
+                conn.execute(text("ALTER TABLE leads ADD COLUMN score INTEGER DEFAULT 0"))
                 conn.execute(text("ALTER TABLE leads ADD COLUMN profile_image_url VARCHAR"))
                 conn.commit()
                 print("Migration (SQLite) success.")
