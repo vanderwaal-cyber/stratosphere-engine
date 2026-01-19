@@ -1,5 +1,5 @@
 import httpx
-from playwright.async_api import async_playwright
+# from playwright.async_api import async_playwright # Remved top-level import to prevent Railway crash
 from bs4 import BeautifulSoup
 from core.logger import app_logger
 
@@ -32,6 +32,9 @@ class WebsiteScraper:
 
     async def fetch_with_playwright(self, url: str) -> str:
         try:
+            # Lazy Import to prevent startup crashes if browsers are missing
+            from playwright.async_api import async_playwright
+            
             async with async_playwright() as p:
                 browser = await p.chromium.launch(headless=True)
                 page = await browser.new_page()

@@ -1,46 +1,8 @@
-from datetime import datetime, timedelta, timedelta
-
-# ... (inside class)
-
-    async def _run_logic(self, mode):
-        db = SessionLocal()
-        try:
-            # 0. Auto-Cleanup (7 Days)
-            cutoff = datetime.utcnow() - timedelta(days=7)
-            deleted = db.query(Lead).filter(Lead.created_at < cutoff).delete()
-            if deleted > 0:
-                self.logger.info(f"Cleaned up {deleted} old leads.")
-                db.commit()
-
-            # 1. Collection
-            self.update_state(step="Collecting", progress=10)
-            # ...
-            
-            # ... Inside Ingestion Loop ...
-            # ...
-                    if exists:
-                        if mode == "refresh":
-                             leads_to_enrich.append(existing_lead)
-                        else:
-                             self.state["stats"]["duplicates_skipped"] += 1
-                        continue
-                        
-                    # It's New
-                    lead = Lead(...)
-                    # ...
-                    db.add(lead)
-                    db.commit()
-                    
-                    self.state["stats"]["new_added"] += 1
-                    leads_to_enrich.append(lead)
-                    
-                    # STOP if 100 new leads reached
-                    if self.state["stats"]["new_added"] >= 100:
-                        self.logger.info("Reached target of 100 new leads.")
-                        break
-                    
-                except Exception as e:
-                    self.logger.error(...)
+import asyncio
+import time
+import uuid
+from datetime import datetime, timedelta
+from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from storage.database import SessionLocal
 from storage.models import Lead, LeadSource, RunLog
