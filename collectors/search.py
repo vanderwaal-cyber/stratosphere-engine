@@ -64,25 +64,48 @@ class UniversalSearchCollector(BaseCollector):
             
             queries = list(queries)
             
+            queries = list(queries)
+            
             for i, q in enumerate(queries):
+                # UI Feedback via callback if provided (e.g. "Scanning: Solana Defi (1/50)")
+                if progress_callback:
+                    progress_callback(step=f"Scanning: '{q}' ({i+1}/{len(queries)})")
+                    
                 self.logger.info(f"📡 CT Radar ({i+1}/50): '{q}'")
                 
-                # Scrape 2 pages deep per query
+                # Robust Scrape: Use html.duckduckgo.com with random sleep buffer
+                # Fallback to standard duckduckgo query param structure if needed
                 current_url = f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(q)}&kl=us-en"
                 
                 for page_num in range(1, 3):
-                    await asyncio.sleep(random.uniform(1.5, 3.0))
+                    await asyncio.sleep(random.uniform(2.0, 4.0)) # Slower to avoid 403
                     
                     html = await self.fetch_page(current_url)
-                    if not html or "No results" in html: break
+                    
+                    # BLOCKING DETECTION
+                    if not html: 
+                        self.logger.warning(f"Empty HTML for {q}")
+                        break
+                    if "If this error persists" in html or "Rate limit" in html:
+                        self.logger.error("⚠️ Rate Limit Detected. Cooling down...")
+                        await asyncio.sleep(5)
+                        break
+                        
+                    if "No results" in html: break
                     
                     soup = BeautifulSoup(html, 'html.parser')
                     results = soup.find_all('div', class_='result')
                     
+                    if not results:
+                        # Try fallback parsing for different DDG layout
+                        results = soup.find_all('div', class_='web-result')
+                    
                     page_found = 0
                     for res in results:
-                        title_tag = res.find('a', class_='result__a')
-                        snippet_tag = res.find('a', class_='result__snippet')
+                        # Try multiple selector strategies
+                        title_tag = res.find('a', class_='result__a') or res.find('h2')
+                        snippet_tag = res.find('a', class_='result__snippet') or res.find('div', class_='result__snippet')
+                        
                         if not title_tag: continue
                         
                         title = title_tag.get_text(strip=True)
@@ -90,13 +113,31 @@ class UniversalSearchCollector(BaseCollector):
                         snippet = snippet_tag.get_text(strip=True) if snippet_tag else ""
                         full_text = (title + " " + snippet).lower()
 
-                        # Verification: Twitter/X OR Project Site
+                        # Logic: If query has "twitter", accept any result that looks like a project
                         handle = None
+                        
+                        # Strategy 1: Link is Twitter
                         if "twitter.com" in link or "x.com" in link:
                              m = re.search(r'(?:twitter\.com|x\.com)/([a-zA-Z0-9_]+)', link)
-                             if m: 
-                                 handle = m.group(1)
-                                 if handle.lower() in ['search', 'home', 'explore', 'notifications', 'hashtag', 'status', 'i']: continue 
+                             if m: handle = m.group(1)
+
+                        # Strategy 2: Title contains @handle
+                        if not handle and "@" in title:
+                            try:
+                                words = title.split()
+                                for w in words:
+                                    if w.startswith("@") and len(w) > 3:
+                                        handle = w.replace("@", "").replace(")", "")
+                                        break
+                            except: pass
+
+                        if handle:
+                            if handle.lower() in ['search', 'home', 'explore', 'notifications', 'hashtag', 'status', 'i', 'intent', 'share']: continue 
+                            
+                            # Clean Name
+                            name = handle
+                            if "(" in title: name = title.split("(")[0].strip()
+                            elif " on " in title: name = title.split(" on ")[0].strip() 
                         
                         if handle:
                             # Clean Name
