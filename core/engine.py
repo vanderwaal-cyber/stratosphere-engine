@@ -49,7 +49,7 @@ class StratosphereEngine:
                 
         self.state["updated_at"] = datetime.utcnow().isoformat()
 
-    async def run(self):
+    async def run(self, mode="refresh"):
         self.stop_requested = False
         run_id = str(uuid.uuid4())[:8]
         self.state = {
@@ -64,13 +64,19 @@ class StratosphereEngine:
             "needs_ai": 0,
             "current_step": "Initializing",
             "current_target": "",
-            "progress": 0
+            "progress": 0,
+            "stats": {
+                "new_added": 0,
+                "duplicates_skipped": 0,
+                "failed_ingestion": 0,
+                "total_scraped": 0
+            }
         }
         
-        self.logger.info(f"🚀 Engine Started (Run {run_id})")
+        self.logger.info(f"🚀 Engine Started (Run {run_id}) | Mode: {mode}")
         
         try:
-            await asyncio.wait_for(self._run_logic(), timeout=300) # 5 min global max
+            await asyncio.wait_for(self._run_logic(mode=mode), timeout=300) # 5 min global max
             self.update_state("done", step="Complete", progress=100)
             
         except asyncio.TimeoutError:
