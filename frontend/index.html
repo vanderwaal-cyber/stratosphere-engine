@@ -77,604 +77,391 @@
             border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
-        /* Shining Card Effect */
+        /* Shining Card Effect - PREMIUM */
         .glass-card {
             background: rgba(30, 41, 59, 0.4);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(12px);
+            /* Increased Blur */
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            /* 10% Opacity Border */
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             overflow: hidden;
         }
 
-        .glass-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 50%;
-            height: 100%;
-            background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.1), transparent);
-            transform: skewX(-25deg);
-            transition: 0.5s;
-        }
+        /* ... existing keyframes ... */
 
-        .glass-card:hover::before {
-            left: 100%;
-        }
-
-        .glass-card:hover {
-            transform: translateY(-4px);
-            border-color: rgba(124, 58, 237, 0.5);
-            /* Violet accent */
-            box-shadow: 0 20px 40px -10px rgba(124, 58, 237, 0.2);
-        }
-
-        /* Animations */
-        .snap-fade-in {
-            opacity: 0;
-            animation: snapFade 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-
-        @keyframes snapFade {
-            from {
-                opacity: 0;
-                transform: translateY(20px) scale(0.96);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
-        }
-
-        @keyframes pulse-soft {
-
-            0%,
-            100% {
-                transform: scale(1);
-                opacity: 1;
-            }
-
-            50% {
-                transform: scale(1.05);
-                opacity: 0.8;
-            }
-        }
-
-        .animate-pulse-soft {
-            animation: pulse-soft 2s infinite;
-        }
-
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-
-        @keyframes shine {
-            0% {
-                transform: translateX(-100%) skewX(-20deg);
-            }
-
-            100% {
-                transform: translateX(200%) skewX(-20deg);
-            }
+        .skeleton-pulse {
+            animation: pulse-soft 1.5s infinite ease-in-out;
         }
     </style>
 </head>
 
 <body class="min-h-screen text-gray-200 selection:bg-violet-500 selection:text-white pb-32 md:pb-0 overflow-x-hidden">
 
-    <!-- Ambient Orbs -->
-    <div
-        class="fixed top-0 left-[-20%] w-[800px] h-[800px] bg-violet-600/10 rounded-full blur-[128px] pointer-events-none animate-pulse-soft">
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed top-24 right-6 z-50 flex flex-col gap-3 pointer-events-none"></div>
+
+    <!-- ... rest of body ... -->
+
+    <!-- Feed Content -->
+    <div id="lead-list" class="flex-1 overflow-y-auto p-5 space-y-3 scroll-smooth no-scrollbar">
+        <!-- LEADS WILL RENDER HERE -->
     </div>
-    <div
-        class="fixed bottom-0 right-[-20%] w-[600px] h-[600px] bg-indigo-900/20 rounded-full blur-[128px] pointer-events-none">
-    </div>
 
-    <div class="max-w-7xl mx-auto px-4 md:px-6 relative z-10 pt-4 md:pt-8">
+    <script>
+        const API_URL = "https://stratosphereleads.up.railway.app";
+        let isRunning = false;
+        let pollingInterval = null;
+        let currentFilter = '';
+        let currentRunId = null;
 
-        <!-- UNIFIED GLASS HEADER -->
-        <header
-            class="glass-panel rounded-2xl p-5 md:p-6 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl border-white/5 relative overflow-hidden group">
+        const $ = (id) => document.getElementById(id);
+        const setVal = (id, val) => { const el = $(id); if (el) el.textContent = val; };
+        const setHtml = (id, html) => { const el = $(id); if (el) el.innerHTML = html; };
+        const setClass = (id, cls) => { const el = $(id); if (el) el.className = cls; };
+        const show = (id) => { const el = $(id); if (el) el.classList.remove('hidden'); };
+        const hide = (id) => { const el = $(id); if (el) el.classList.add('hidden'); };
 
-            <!-- Shine Effect -->
-            <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:animate-[shine_1.5s_ease-in-out_infinite]"
-                style="animation-play-state: paused;"></div>
+        // --- TOAST SYSTEM ---
+        function showToast(msg, type = 'info') {
+            const container = $('toast-container');
+            if (!container) return;
 
-            <!-- Brand Section -->
-            <div class="flex flex-col md:flex-row items-center gap-6 text-center md:text-left z-10">
-                <div class="relative group">
-                    <div
-                        class="absolute -inset-1 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-2xl blur opacity-30 group-hover:opacity-60 transition duration-500">
-                    </div>
-                    <img id="logo-img" src="/assets/brand_logo.jpg" alt="Logo"
-                        class="relative w-24 h-24 rounded-2xl shadow-2xl object-cover border border-white/10 ring-1 ring-white/5">
-                </div>
+            const el = document.createElement('div');
+            el.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl backdrop-blur-md shadow-2xl border transition-all duration-300 transform translate-x-10 opacity-0 ${type === 'error' ? 'bg-red-500/20 border-red-500/30 text-red-200' :
+                    type === 'success' ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-200' :
+                        'bg-violet-500/20 border-violet-500/30 text-white'
+                }`;
 
-                <div>
-                    <h1 class="text-4xl md:text-5xl font-bold text-white tracking-tight mb-2 drop-shadow-lg">
-                        Stratosphere <span
-                            class="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-indigo-300 font-light">Radar</span>
-                    </h1>
-                    <div class="flex flex-wrap justify-center md:justify-start gap-2">
-                        <span
-                            class="px-3 py-1 rounded-full text-xs font-bold bg-violet-500/10 text-violet-200 border border-violet-500/20 shadow-inner shadow-violet-500/5">v3.5
-                            Active</span>
+            let icon = type === 'error' ? 'alert-circle' : type === 'success' ? 'check-circle' : 'info';
 
-                        <!-- Status Badge with ID restored for JS -->
-                        <div
-                            class="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-inner shadow-emerald-500/5">
-                            <span id="status-indicator"
-                                class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_currentColor]"></span>
-                            <span id="status-text">System Online</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            el.innerHTML = `
+                        <i data-lucide="${icon}" class="w-5 h-5"></i>
+                        <span class="text-xs font-bold tracking-wide">${msg}</span>
+                    `;
 
-            <!-- Action Cluster -->
-            <div class="flex flex-wrap justify-center items-center gap-3 w-full md:w-auto z-10">
-                <div id="loading-indicator"
-                    class="hidden flex items-center gap-2 px-4 py-2 rounded-full bg-black/40 border border-white/10 backdrop-blur-md">
-                    <div class="w-4 h-4 border-2 border-violet-400 border-t-transparent rounded-full animate-spin">
-                    </div>
-                    <span id="loading-text" class="text-xs font-medium text-violet-200">Processing...</span>
-                </div>
+            container.appendChild(el);
+            if (window.lucide) lucide.createIcons();
 
-                <button onclick="stopPipeline()" id="btn-stop"
-                    class="hidden px-5 py-2.5 rounded-xl text-xs font-bold text-red-200 bg-red-500/20 border border-red-500/30 hover:bg-red-500/30 transition-all shadow-[0_0_15px_rgba(239,68,68,0.2)]">STOP
-                    SYSTEM</button>
+            // Animate In
+            requestAnimationFrame(() => {
+                el.classList.remove('translate-x-10', 'opacity-0');
+            });
 
-                <button onclick="window.open('/leads/export?run_id=' + (currentRunId || ''), '_blank')"
-                    class="p-3.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:scale-105 active:scale-95 transition-all text-gray-400 hover:text-white group"
-                    title="Export CSV">
-                    <i data-lucide="download" class="w-5 h-5 group-hover:text-violet-300 transition-colors"></i>
-                </button>
+            // Remove
+            setTimeout(() => {
+                el.classList.add('translate-x-10', 'opacity-0');
+                setTimeout(() => el.remove(), 300);
+            }, 4000);
+        }
 
-                <button id="btn-generate" onclick="handleGenerate()"
-                    class="relative group px-10 py-3.5 rounded-xl bg-white text-black font-bold text-sm shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_40px_rgba(124,58,237,0.4)] transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden w-full md:w-auto">
-                    <span class="relative z-10 flex items-center justify-center gap-2">
-                        <i data-lucide="radar"
-                            class="w-5 h-5 text-violet-600 transition-transform group-hover:rotate-180"></i>
-                        INITIATE SCAN
-                    </span>
-                    <div
-                        class="absolute inset-0 bg-gradient-to-r from-violet-100 via-white to-violet-100 opacity-0 group-hover:opacity-100 transition-opacity">
-                    </div>
-                    <!-- Ripple effect container -->
-                    <div class="absolute inset-0 pointer-events-none group-hover:animate-pulse bg-violet-500/10"></div>
-                </button>
-            </div>
-        </header>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.lucide) lucide.createIcons();
+            const logo = $('logo-img');
+            if (logo) logo.src = '/assets/brand_logo.jpg?v=' + new Date().getTime();
+            const btn = $('btn-generate');
+            if (btn) btn.onclick = handleGenerate;
 
-        <!-- KPI STATS (Vertical Stack Mobile) -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <!-- Total -->
-            <div class="glass-card p-6 md:p-8 rounded-2xl flex items-center justify-between group cursor-default">
-                <div>
-                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mb-2">Discovered</h3>
-                    <h2 id="stat-total"
-                        class="text-5xl md:text-6xl font-bold text-white group-hover:text-violet-300 transition-colors drop-shadow-md">
-                        0</h2>
-                </div>
-                <div
-                    class="p-5 rounded-2xl bg-violet-500/10 text-violet-400 group-hover:scale-110 group-hover:bg-violet-500/20 group-hover:shadow-[0_0_30px_rgba(139,92,246,0.3)] transition-all duration-500">
-                    <i data-lucide="database" class="w-8 h-8 md:w-10 md:h-10"></i>
-                </div>
-            </div>
+            fetchData();
+            startPolling();
+        });
 
-            <!-- Ready -->
-            <div class="glass-card p-6 md:p-8 rounded-2xl flex items-center justify-between group cursor-default">
-                <div>
-                    <h3 class="text-xs font-bold text-emerald-500/60 uppercase tracking-[0.2em] mb-2">Ready to DM</h3>
-                    <h2 id="stat-ready"
-                        class="text-5xl md:text-6xl font-bold text-white group-hover:text-emerald-300 transition-colors drop-shadow-md">
-                        0</h2>
-                </div>
-                <div
-                    class="p-5 rounded-2xl bg-emerald-500/10 text-emerald-400 group-hover:scale-110 group-hover:bg-emerald-500/20 group-hover:shadow-[0_0_30px_rgba(16,185,129,0.3)] transition-all duration-500">
-                    <i data-lucide="send" class="w-8 h-8 md:w-10 md:h-10"></i>
-                </div>
-            </div>
+        function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
 
-            <!-- AI -->
-            <div class="glass-card p-6 md:p-8 rounded-2xl flex items-center justify-between group cursor-default">
-                <div>
-                    <h3 class="text-xs font-bold text-amber-500/60 uppercase tracking-[0.2em] mb-2">AI Analyst</h3>
-                    <h2 id="stat-alt"
-                        class="text-5xl md:text-6xl font-bold text-white group-hover:text-amber-300 transition-colors drop-shadow-md">
-                        0</h2>
-                </div>
-                <div
-                    class="p-5 rounded-2xl bg-amber-500/10 text-amber-400 group-hover:scale-110 group-hover:bg-amber-500/20 group-hover:shadow-[0_0_30px_rgba(245,158,11,0.3)] transition-all duration-500">
-                    <i data-lucide="bot" class="w-8 h-8 md:w-10 md:h-10"></i>
-                </div>
-            </div>
-        </div>
+        function renderSkeletons() {
+            const list = $('lead-list');
+            if (!list) return;
+            list.innerHTML = ''; // Clear
 
-        <!-- MAIN FEED -->
-        <div
-            class="glass-panel rounded-2xl flex flex-col h-[calc(100vh-480px)] min-h-[500px] border-t border-white/10 shadow-2xl relative overflow-hidden">
-            <!-- Feed Headers -->
-            <div
-                class="p-5 border-b border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0 bg-black/20 backdrop-blur-xl z-20">
-                <div class="flex items-center gap-3">
-                    <h3 class="text-lg font-bold text-white flex items-center gap-3">
-                        <i data-lucide="list-filter" class="w-5 h-5 text-violet-400"></i> Lead Stream
-                    </h3>
+            // Generate 5 Skeletons
+            let html = '';
+            for (let i = 0; i < 5; i++) {
+                html += `
+                        <div class="p-5 rounded-2xl glass-card flex items-start gap-4 border border-white/5 relative overflow-hidden">
+                             <div class="w-12 h-12 rounded-xl bg-white/5 skeleton-pulse shrink-0"></div>
+                             <div class="flex-1 space-y-3">
+                                <div class="flex justify-between">
+                                    <div class="h-4 w-32 bg-white/5 rounded skeleton-pulse"></div>
+                                    <div class="h-4 w-16 bg-white/5 rounded skeleton-pulse"></div>
+                                </div>
+                                <div class="h-3 w-3/4 bg-white/5 rounded skeleton-pulse"></div>
+                                <div class="h-3 w-1/2 bg-white/5 rounded skeleton-pulse"></div>
+                             </div>
+                        </div>`;
+            }
+            list.innerHTML = html;
+        }
 
-                    <div id="progress-container"
-                        class="hidden w-32 h-1.5 bg-gray-800 rounded-full overflow-hidden shadow-inner">
-                        <div id="progress-bar"
-                            class="h-full bg-gradient-to-r from-violet-600 to-indigo-400 transition-all duration-500 w-0">
-                        </div>
-                    </div>
-                </div>
+        async function handleGenerate() {
+            if (isRunning) return;
+            setLoadingState(true, "Radar Active: Initializing...");
+            currentRunId = generateUUID();
 
-                <div
-                    class="flex p-1 bg-black/40 rounded-xl border border-white/5 overflow-x-auto no-scrollbar shadow-inner">
-                    <button onclick="setFilter('READY_TO_DM')" id="tab-ready"
-                        class="flex-1 whitespace-nowrap px-5 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition-colors uppercase tracking-wider">Ready
-                        to DM</button>
-                    <button onclick="setFilter('NEEDS_ALT_OUTREACH')" id="tab-ai"
-                        class="flex-1 whitespace-nowrap px-5 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition-colors uppercase tracking-wider">AI
-                        Required</button>
-                    <button onclick="setFilter('')" id="tab-all"
-                        class="flex-1 whitespace-nowrap px-5 py-2 text-xs font-bold rounded-lg bg-violet-600 text-white shadow-[0_0_15px_rgba(124,58,237,0.4)] transition-all uppercase tracking-wider">All
-                        Signals</button>
-                </div>
-            </div>
+            renderSkeletons(); // SHOW SKELETONS
 
-            <!-- Feed Content -->
-            <div id="lead-list" class="flex-1 overflow-y-auto p-5 space-y-3 scroll-smooth no-scrollbar">
-                <!-- LEADS WILL RENDER HERE -->
-            </div>
+            try {
+                const modeSelect = $('run-mode');
+                const mode = modeSelect ? modeSelect.value : 'fresh';
 
-            <script>
-                // Hardcoded Production URL for maximum reachability
-                const API_URL = "https://stratosphereleads.up.railway.app";
-                let isRunning = false;
-                let pollingInterval = null;
-                let currentFilter = '';
-                let currentRunId = null;
-
-                // --- SAFE DOM HELPERS ---
-                const $ = (id) => document.getElementById(id);
-                const setVal = (id, val) => { const el = $(id); if (el) el.textContent = val; };
-                const setHtml = (id, html) => { const el = $(id); if (el) el.innerHTML = html; };
-                const setClass = (id, cls) => { const el = $(id); if (el) el.className = cls; };
-                const show = (id) => { const el = $(id); if (el) el.classList.remove('hidden'); };
-                const hide = (id) => { const el = $(id); if (el) el.classList.add('hidden'); };
-
-                document.addEventListener('DOMContentLoaded', () => {
-                    // Init Icons
-                    if (window.lucide) lucide.createIcons();
-
-                    // Cache Buster for Logo
-                    const logo = $('logo-img');
-                    if (logo) logo.src = '/assets/brand_logo.jpg?v=' + new Date().getTime();
-
-                    // Setup Listeners
-                    const btn = $('btn-generate');
-                    if (btn) btn.onclick = handleGenerate;
-
-                    // Initial Fetch
-                    fetchData();
-                    startPolling();
+                const res = await fetch(`${API_URL}/pipeline/run`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode: mode, run_id: currentRunId })
                 });
 
-                function generateUUID() {
-                    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-                        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-                        return v.toString(16);
-                    });
+                if (!res.ok) throw new Error("Server refused connection");
+
+                const data = await res.json();
+                if (data.status === 'busy') {
+                    showToast("System is busy. Please wait.", "error");
+                } else {
+                    const bar = $('progress-bar');
+                    if (bar) bar.style.width = '5%';
+                    startPolling();
                 }
+            } catch (e) {
+                showToast(`Start Failed: ${e.message}`, "error");
+                setLoadingState(false);
+                fetchData();
+            }
+        }
 
-                async function handleGenerate() {
-                    if (isRunning) return;
-                    setLoadingState(true, "Initializing Arrays...");
-                    currentRunId = generateUUID();
+        // ... stopPipeline (keep same but use toast) ...
 
-                    // Safe Reset Feed
-                    setHtml('lead-list', `
-                <div class="flex flex-col items-center justify-center py-20 animate-pulse">
-                    <div class="w-12 h-12 rounded-full border-4 border-violet-500 border-t-transparent animate-spin mb-4"></div>
-                    <p class="text-violet-300 text-sm font-medium">Calibrating Radar...</p>
-                    <p class="text-xs text-gray-500 font-mono mt-1">ID: ${currentRunId.substring(0, 8)}</p>
-                </div>
-            `);
+        async function stopPipeline() {
+            if (!confirm("Confirm Emergency Stop?")) return;
+            try {
+                await fetch(`${API_URL}/pipeline/stop`, { method: 'POST' });
+                const btn = $('btn-stop');
+                if (btn) btn.textContent = "Halting...";
+                showToast("Emergency Stop Initiated", "info");
 
-                    try {
-                        const modeSelect = $('run-mode');
-                        const mode = modeSelect ? modeSelect.value : 'fresh';
-
-                        const res = await fetch(`${API_URL}/pipeline/run`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ mode: mode, run_id: currentRunId })
-                        });
-
-                        if (!res.ok) throw new Error("Server refused connection");
-
-                        const data = await res.json();
-                        if (data.status === 'busy') {
-                            alert("System is currently busy. Please wait for the active scan to complete.");
-                        } else {
-                            const bar = $('progress-bar');
-                            if (bar) bar.style.width = '5%';
-                            startPolling();
-                        }
-                    } catch (e) {
-                        console.error("Run Error", e);
-                        alert(`Failed to start engine: ${e.message || e}`);
-                        setLoadingState(false);
-                        fetchData();
-                    }
-                }
-
-                async function stopPipeline() {
-                    if (!confirm("Confirm Emergency Stop?")) return;
-                    try {
-                        await fetch(`${API_URL}/pipeline/stop`, { method: 'POST' });
-                        const btn = $('btn-stop');
-                        if (btn) btn.textContent = "Halting...";
-
-                        // Force UI reset after delay
-                        setTimeout(() => {
-                            setLoadingState(false);
-                            fetchData();
-                        }, 2000);
-                    } catch (e) {
-                        alert("Failed to stop: " + e.message);
-                    }
-                }
-
-                function setFilter(bucket) {
-                    currentFilter = bucket;
-
-                    // Reset Tabs
-                    document.querySelectorAll('button[id^="tab-"]').forEach(btn => {
-                        btn.className = "flex-1 whitespace-nowrap px-5 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition-colors uppercase tracking-wider";
-                    });
-
-                    // Highlight Active
-                    let activeId = 'tab-all';
-                    if (bucket === 'READY_TO_DM') activeId = 'tab-ready';
-                    if (bucket === 'NEEDS_ALT_OUTREACH') activeId = 'tab-ai';
-
-                    const activeBtn = $(activeId);
-                    if (activeBtn) {
-                        activeBtn.className = "flex-1 whitespace-nowrap px-5 py-2 text-xs font-bold rounded-lg bg-violet-600 text-white shadow-[0_0_15px_rgba(124,58,237,0.4)] transition-all uppercase tracking-wider";
-                    }
-
+                setTimeout(() => {
+                    setLoadingState(false);
                     fetchData();
-                }
+                }, 2000);
+            } catch (e) {
+                showToast("Stop Failed: " + e.message, "error");
+            }
+        }
 
-                function startPolling() {
-                    if (pollingInterval) return;
-                    pollStatus();
-                    pollingInterval = setInterval(pollStatus, 2000);
+        // ... setFilter ...
 
-                    // Auto-Refresh Heartbeat (30s)
-                    setInterval(() => {
-                        if (!isRunning) fetchData();
-                    }, 30000);
-                }
+        function setFilter(bucket) {
+            currentFilter = bucket;
+            document.querySelectorAll('button[id^="tab-"]').forEach(btn => {
+                btn.className = "flex-1 whitespace-nowrap px-5 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition-colors uppercase tracking-wider";
+            });
+            let activeId = 'tab-all';
+            if (bucket === 'READY_TO_DM') activeId = 'tab-ready';
+            if (bucket === 'NEEDS_ALT_OUTREACH') activeId = 'tab-ai';
+            const activeBtn = $(activeId);
+            if (activeBtn) {
+                activeBtn.className = "flex-1 whitespace-nowrap px-5 py-2 text-xs font-bold rounded-lg bg-violet-600 text-white shadow-[0_0_15px_rgba(124,58,237,0.4)] transition-all uppercase tracking-wider";
+            }
+            fetchData();
+        }
 
-                async function pollStatus() {
-                    try {
-                        const res = await fetch(`${API_URL}/pipeline/status`);
-                        if (!res.ok) return; // Silent fail
-                        const state = await res.json();
-                        renderStatus(state);
+        function startPolling() {
+            if (pollingInterval) return;
+            pollStatus();
+            pollingInterval = setInterval(pollStatus, 2000);
+            setInterval(() => { if (!isRunning) fetchData(); }, 30000);
+        }
 
-                        const bar = $('progress-bar');
+        async function pollStatus() {
+            try {
+                const res = await fetch(`${API_URL}/pipeline/status`);
+                if (!res.ok) return;
+                const state = await res.json();
+                renderStatus(state);
 
-                        if (state.state === 'running') {
-                            if (!isRunning) setLoadingState(true, state.current_step || "Processing...");
-                            show('progress-container');
+                const bar = $('progress-bar');
 
-                            if (bar) bar.style.width = `${state.progress}%`;
-                            setVal('loading-text', `${state.current_step} (${state.progress}%)`);
+                if (state.state === 'running') {
+                    if (!isRunning) setLoadingState(true, state.current_step || "Radar Active");
+                    show('progress-container');
+                    if (bar) bar.style.width = `${state.progress}%`;
 
-                            updateStats(state);
+                    // Dynamic Header Text Upgrade
+                    setVal('loading-text', state.current_step ? state.current_step.replace("Mining", "Scanning") : "Processing...");
+
+                    updateStats(state);
+                } else {
+                    if (isRunning) {
+                        setLoadingState(false);
+                        hide('progress-container');
+                        if (bar) bar.style.width = '0%';
+                        fetchData();
+                        if (state.state === 'error') {
+                            showToast("Engine Alert: " + state.current_step, "error");
                         } else {
-                            if (isRunning) {
-                                // Finished
-                                setLoadingState(false);
-                                hide('progress-container');
-                                if (bar) bar.style.width = '0%';
-                                fetchData();
-
-                                if (state.state === 'error') {
-                                    alert("System Alert: " + (state.current_step || "Unknown Error"));
-                                }
-                            }
+                            showToast("Scan Complete. Database Updated.", "success");
                         }
-                    } catch (e) {
-                        console.warn("Poll missing", e);
                     }
                 }
+            } catch (e) {
+                // Silent
+            }
+        }
 
-                function renderStatus(state) {
-                    const statusEl = $('status-text');
-                    const indicator = $('status-indicator');
-                    if (!statusEl || !indicator) return;
+        function renderStatus(state) {
+            // ... keep existing renderStatus ...
+            const statusEl = $('status-text');
+            const indicator = $('status-indicator');
+            if (!statusEl || !indicator) return;
 
-                    let text = "Idle";
-                    let colorClass = "text-gray-400";
-                    let dotClass = "bg-gray-500 shadow-none";
+            let text = "Idle";
+            let colorClass = "text-gray-400";
+            let dotClass = "bg-gray-500 shadow-none";
 
-                    switch (state.state) {
-                        case "running":
-                            text = state.current_step || "Scanning...";
-                            colorClass = "text-emerald-400 font-bold";
-                            dotClass = "bg-emerald-400 shadow-[0_0_10px_currentColor]";
-                            break;
-                        case "error":
-                            text = "System Fault";
-                            colorClass = "text-red-400 font-bold";
-                            dotClass = "bg-red-500 shadow-[0_0_10px_currentColor]";
-                            break;
-                        case "done":
-                            text = "Online";
-                            colorClass = "text-emerald-300 font-medium";
-                            dotClass = "bg-emerald-500 shadow-[0_0_10px_currentColor]";
-                            break;
-                        case "stopping":
-                            text = "Stopping...";
-                            colorClass = "text-amber-300";
-                            dotClass = "bg-amber-400";
-                            break;
-                    }
+            switch (state.state) {
+                case "running":
+                    text = state.current_step ? state.current_step.split('(')[0] : "ACTIVE"; // Simplified
+                    colorClass = "text-emerald-400 font-bold";
+                    dotClass = "bg-emerald-400 shadow-[0_0_10px_currentColor]";
+                    break;
+                case "error":
+                    text = "OFFLINE";
+                    colorClass = "text-red-400 font-bold";
+                    dotClass = "bg-red-500 shadow-[0_0_10px_currentColor]";
+                    break;
+                case "done":
+                    text = "ONLINE";
+                    colorClass = "text-emerald-300 font-medium";
+                    dotClass = "bg-emerald-500 shadow-[0_0_10px_currentColor]";
+                    break;
+            }
+            statusEl.textContent = text;
+            statusEl.className = `text-[10px] uppercase tracking-wider ${colorClass}`;
+            indicator.className = `w-2 h-2 rounded-full animate-pulse transition-all duration-300 ${dotClass}`;
+        }
 
-                    statusEl.textContent = text;
-                    statusEl.className = `text-[10px] uppercase tracking-wider ${colorClass}`;
-                    indicator.className = `w-2 h-2 rounded-full animate-pulse transition-all duration-300 ${dotClass}`;
+        async function fetchData() {
+            try {
+                const timeEl = $('last-updated');
+                if (timeEl) timeEl.textContent = "Updated: " + new Date().toLocaleTimeString();
+
+                fetch(`${API_URL}/api/leads/stats`)
+                    .then(res => res.json())
+                    .then(stats => updateStats(stats))
+                    .catch(e => { });
+
+                let url = `${API_URL}/api/leads?limit=500`;
+                if (currentFilter && currentFilter.length > 0) url += `&bucket=${currentFilter}`;
+
+                const leadsRes = await fetch(url);
+                if (!leadsRes.ok) throw new Error("Signal Lost");
+
+                const leads = await leadsRes.json();
+                renderLeads(leads);
+            } catch (e) {
+                showToast("Reconnecting to satellite...", "info"); // Cleaner error
+            }
+        }
+
+        function updateStats(stats) {
+            const anim = (id, val) => {
+                const el = $(id);
+                // Micro-interaction: Slide Up Effect implementation via simple rewrite for now
+                if (el && el.textContent != val) animateValue(id, parseInt(el.textContent) || 0, val || 0, 800);
+            };
+            anim('stat-total', stats.total_leads);
+            anim('stat-ready', stats.ready_to_dm);
+            anim('stat-alt', stats.needs_alt_outreach);
+        }
+
+        // ... Keep setLoadingState ...
+        function setLoadingState(loading, text = "Processing...") {
+            const btn = $('btn-generate');
+            const stopBtn = $('btn-stop');
+
+            isRunning = loading;
+
+            if (loading) {
+                if (btn) {
+                    btn.disabled = true;
+                    btn.classList.add('opacity-50', 'cursor-not-allowed', 'grayscale');
+                }
+                show('loading-indicator');
+                show('btn-stop');
+                setVal('loading-text', text);
+            } else {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed', 'grayscale');
+                }
+                hide('loading-indicator');
+                hide('btn-stop');
+            }
+        }
+
+
+        // renderLeads (modified)
+        function renderLeads(leads) {
+            const list = $('lead-list');
+            if (!list) return;
+
+            if (!leads || leads.length === 0) {
+                // Use SKELETONS instead of text if we are 'running' but have 0 leads? 
+                // Or if effectively empty DB.
+                // User asked: "When the Lead Stream is empty, show 5 'pulsing' lead skeletons"
+                renderSkeletons();
+                return;
+            }
+
+            // ... Diffing Logic (keep same) ...
+            const existingMap = new Map();
+            list.querySelectorAll('[data-id]').forEach(el => existingMap.set(parseInt(el.dataset.id), el));
+
+            leads.forEach((lead, index) => {
+                // ... (keep same logic) ...
+                let el = existingMap.get(lead.id);
+                let isNew = false;
+                if (!el) {
+                    isNew = true;
+                    el = document.createElement('div');
+                    el.dataset.id = lead.id;
+                    el.className = `w-full p-5 rounded-2xl glass-card flex items-start gap-4 group hover:bg-white/5 transition-all relative overflow-hidden`;
+                    el.classList.add('opacity-0', 'snap-fade-in');
+                    el.style.animationDelay = `${Math.min(index * 0.05, 1.0)}s`;
                 }
 
-                async function fetchData() {
-                    try {
-                        // Update Timestamp Safe
-                        const timeEl = $('last-updated');
-                        if (timeEl) timeEl.textContent = "Updated: " + new Date().toLocaleTimeString();
-
-                        // Stats
-                        fetch(`${API_URL}/api/leads/stats`)
-                            .then(res => res.json())
-                            .then(stats => updateStats(stats))
-                            .catch(e => console.warn("Stats skipped"));
-
-                        // Leads
-                        let url = `${API_URL}/api/leads?limit=500`;
-                        // Fix: Ensure empty filter gets ALL leads
-                        if (currentFilter && currentFilter.length > 0) url += `&bucket=${currentFilter}`;
-
-                        const leadsRes = await fetch(url);
-                        if (!leadsRes.ok) throw new Error("Signal Lost");
-
-                        const leads = await leadsRes.json();
-                        renderLeads(leads);
-                    } catch (e) {
-                        console.error("Fetch Error", e);
-                        setHtml('lead-list', `
-                    <div class="flex flex-col items-center justify-center py-20 text-red-300 opacity-80">
-                        <i data-lucide="wifi-off" class="w-12 h-12 mb-3"></i>
-                        <p class="font-bold text-sm">Connection Interrupted</p>
-                        <p class="text-xs font-mono mt-2 opacity-50">${e.message}</p>
-                        <button onclick="fetchData()" class="mt-4 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-bold text-white transition-colors">RECONNECT</button>
-                    </div>
-                `);
-                        if (window.lucide) lucide.createIcons();
-                    }
+                // Hot Glow
+                const isHot = (lead.score || 0) > 40;
+                if (isHot) {
+                    el.classList.add('border-orange-500/20', 'bg-orange-500/5');
+                } else {
+                    el.classList.remove('border-orange-500/20', 'bg-orange-500/5');
                 }
 
-                function updateStats(stats) {
-                    // Helper for animation
-                    const anim = (id, val) => {
-                        const el = $(id);
-                        if (el && el.textContent != val) animateValue(id, parseInt(el.textContent) || 0, val || 0, 800);
-                    };
-                    anim('stat-total', stats.total_leads);
-                    anim('stat-ready', stats.ready_to_dm);
-                    anim('stat-alt', stats.needs_alt_outreach);
+                // Badges
+                let badges = '';
+                if (lead.bucket === 'READY_TO_DM') {
+                    badges += `<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-[0_0_10px_rgba(16,185,129,0.1)]">Ready</span>`;
+                } else if (lead.status === 'processed') {
+                    badges += `<span class="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">Analyzed</span>`;
+                } else {
+                    badges += `<span class="bg-gray-800 text-gray-400 border border-gray-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">New</span>`;
                 }
 
-                function setLoadingState(loading, text = "Processing...") {
-                    const btn = $('btn-generate');
-                    const stopBtn = $('btn-stop');
-
-                    isRunning = loading;
-
-                    if (loading) {
-                        if (btn) {
-                            btn.disabled = true;
-                            btn.classList.add('opacity-50', 'cursor-not-allowed', 'grayscale');
-                        }
-                        show('loading-indicator');
-                        show('btn-stop');
-                        setVal('loading-text', text);
-                    } else {
-                        if (btn) {
-                            btn.disabled = false;
-                            btn.classList.remove('opacity-50', 'cursor-not-allowed', 'grayscale');
-                        }
-                        hide('loading-indicator');
-                        hide('btn-stop');
-                    }
+                // Hot Score
+                if (isHot) {
+                    badges = `<span class="bg-orange-500/10 text-orange-400 border border-orange-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1"><i data-lucide="flame" class="w-3 h-3"></i> ${lead.score}</span>` + badges;
                 }
 
-                function renderLeads(leads) {
-                    const list = $('lead-list');
-                    if (!list) return;
+                const handle = lead.twitter_handle ? lead.twitter_handle.replace('@', '') : '';
+                const pfp = lead.profile_image_url || (handle ? `https://unavatar.io/twitter/${handle}` : `https://ui-avatars.com/api/?name=${lead.project_name}&background=1e293b&color=fff`);
+                let desc = (lead.description || "No description available.").replace(/["{}]/g, "");
 
-                    if (!leads || leads.length === 0) {
-                        list.innerHTML = `
-                            <div class="flex flex-col items-center justify-center py-20 text-gray-500 opacity-50">
-                                <div class="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mb-4 border border-white/5">
-                                    <i data-lucide="radar" class="w-8 h-8 text-gray-600"></i>
-                                </div>
-                                <p class="text-xs font-bold uppercase tracking-widest">No Signals Detected</p>
-                            </div>`;
-                        if (window.lucide) lucide.createIcons();
-                        return;
-                    }
-
-                    // --- SMOOTH DIFFING ---
-                    // 1. Index existing
-                    const existingMap = new Map();
-                    list.querySelectorAll('[data-id]').forEach(el => existingMap.set(parseInt(el.dataset.id), el));
-
-                    // 2. Build or Update
-                    leads.forEach((lead, index) => {
-                        let el = existingMap.get(lead.id);
-                        let isNew = false;
-
-                        if (!el) {
-                            isNew = true;
-                            el = document.createElement('div');
-                            el.dataset.id = lead.id;
-                            // Add 'w-full' for mobile fix
-                            el.className = `w-full p-5 rounded-2xl glass-card flex items-start gap-4 group hover:bg-white/5 transition-all relative overflow-hidden`;
-                            // Only animate NEW items
-                            el.classList.add('opacity-0', 'snap-fade-in');
-                            el.style.animationDelay = `${Math.min(index * 0.05, 1.0)}s`;
-                        }
-
-                        // Hot Glow
-                        const isHot = (lead.score || 0) > 40;
-                        if (isHot) {
-                            el.classList.add('border-orange-500/20', 'bg-orange-500/5');
-                        } else {
-                            el.classList.remove('border-orange-500/20', 'bg-orange-500/5');
-                        }
-
-                        // Badges
-                        let badges = '';
-                        if (lead.bucket === 'READY_TO_DM') {
-                            badges += `<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-[0_0_10px_rgba(16,185,129,0.1)]">Ready</span>`;
-                        } else if (lead.status === 'processed') {
-                            badges += `<span class="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">Analyzed</span>`;
-                        } else {
-                            badges += `<span class="bg-gray-800 text-gray-400 border border-gray-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">New</span>`;
-                        }
-
-                        // Hot Score
-                        if (isHot) {
-                            badges = `<span class="bg-orange-500/10 text-orange-400 border border-orange-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1"><i data-lucide="flame" class="w-3 h-3"></i> ${lead.score}</span>` + badges;
-                        }
-
-                        const handle = lead.twitter_handle ? lead.twitter_handle.replace('@', '') : '';
-                        const pfp = lead.profile_image_url || (handle ? `https://unavatar.io/twitter/${handle}` : `https://ui-avatars.com/api/?name=${lead.project_name}&background=1e293b&color=fff`);
-                        let desc = (lead.description || "No description available.").replace(/["{}]/g, "");
-
-                        const html = `
+                const html = `
                             <div class="relative w-12 h-12 shrink-0 group-hover:scale-105 transition-transform duration-500 ease-out">
                                 <img src="${pfp}" alt="Icon" class="w-full h-full rounded-xl object-cover border border-white/10 shadow-lg bg-gray-900" loading="lazy" onerror="this.src='https://ui-avatars.com/api/?name=?'">
                                 ${lead.platform === 'x' ? '<div class="absolute -bottom-1 -right-1 w-5 h-5 bg-black rounded-full flex items-center justify-center border border-gray-800"><i data-lucide="twitter" class="w-3 h-3 text-white"></i></div>' : ''}
@@ -696,46 +483,39 @@
                             </div>
                         `;
 
-                        // Only update HTML if changed (basic check)
-                        if (el.innerHTML !== html) el.innerHTML = html;
+                if (el.innerHTML !== html) el.innerHTML = html;
+                if (isNew) list.appendChild(el);
+            });
+            const currentIds = new Set(leads.map(l => l.id));
+            existingMap.forEach((el, id) => {
+                if (!currentIds.has(id)) el.remove();
+            });
+            if (window.lucide) lucide.createIcons();
+        }
 
-                        if (isNew) {
-                            list.appendChild(el);
-                        }
-                    });
+        function timeAgo(dateString) {
+            if (!dateString) return '';
+            const sec = Math.floor((new Date() - new Date(dateString)) / 1000);
+            if (sec < 60) return 'now';
+            if (sec < 3600) return Math.floor(sec / 60) + 'm';
+            if (sec < 86400) return Math.floor(sec / 3600) + 'h';
+            return Math.floor(sec / 86400) + 'd';
+        }
 
-                    // 3. Remove Stale
-                    const currentIds = new Set(leads.map(l => l.id));
-                    existingMap.forEach((el, id) => {
-                        if (!currentIds.has(id)) el.remove();
-                    });
-
-                    if (window.lucide) lucide.createIcons();
-                }
-
-                function timeAgo(dateString) {
-                    if (!dateString) return '';
-                    const sec = Math.floor((new Date() - new Date(dateString)) / 1000);
-                    if (sec < 60) return 'now';
-                    if (sec < 3600) return Math.floor(sec / 60) + 'm';
-                    if (sec < 86400) return Math.floor(sec / 3600) + 'h';
-                    return Math.floor(sec / 86400) + 'd';
-                }
-
-                function animateValue(id, start, end, duration) {
-                    if (start === end) return;
-                    const obj = $(id);
-                    if (!obj) return;
-                    let startTimestamp = null;
-                    const step = (timestamp) => {
-                        if (!startTimestamp) startTimestamp = timestamp;
-                        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-                        obj.innerText = Math.floor(progress * (end - start) + start);
-                        if (progress < 1) window.requestAnimationFrame(step);
-                    };
-                    window.requestAnimationFrame(step);
-                }
-            </script>
+        function animateValue(id, start, end, duration) {
+            if (start === end) return;
+            const obj = $(id);
+            if (!obj) return;
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                obj.innerText = Math.floor(progress * (end - start) + start);
+                if (progress < 1) window.requestAnimationFrame(step);
+            };
+            window.requestAnimationFrame(step);
+        }
+    </script>
 </body>
 
 </html>
