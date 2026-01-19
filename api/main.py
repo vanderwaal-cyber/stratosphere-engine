@@ -56,11 +56,16 @@ class RunRequest(BaseModel):
 @app.post("/pipeline/run")
 @limiter.limit("5/minute")
 async def trigger_pipeline(request: Request, req: RunRequest = RunRequest(), background_tasks: BackgroundTasks = BackgroundTasks()):
-    if engine_instance.state["state"] == "running":
-        return {"status": "busy", "message": "Pipeline already running"}
-        
-    background_tasks.add_task(engine_instance.run, mode=req.mode)
-    return {"status": "started", "message": f"Pipeline running in background ({req.mode})"}
+    try:
+        if engine_instance.state["state"] == "running":
+            return {"status": "busy", "message": "Pipeline already running"}
+            
+        background_tasks.add_task(engine_instance.run, mode=req.mode)
+        return {"status": "started", "message": f"Pipeline running in background ({req.mode})"}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/pipeline/stop")
 async def stop_pipeline():

@@ -282,7 +282,7 @@
                 }
             } catch (e) {
                 console.error(e);
-                alert("Failed to start engine.");
+                alert(`Failed to start engine: ${e.message || e}`);
                 setLoadingState(false);
                 fetchData(); // Restore old list if failed
             }
