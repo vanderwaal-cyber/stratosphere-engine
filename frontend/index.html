@@ -442,29 +442,40 @@
 
         async function fetchData() {
             try {
-                // MAXIMIZED VIEW: Fetch 500 leads, ample limit to show the "3k" historical data
-                // REMOVED: run_id and created_after filters. We want to see EVERYTHING.
-                let url = `${API_URL}/api/leads?limit=500`;
+                // Fetch Stats Independently (so one failure doesn't block the other)
+                fetch(`${API_URL}/api/leads/stats`)
+                    .then(res => res.json())
+                    .then(stats => updateStats(stats))
+                    .catch(e => console.warn("Stats failed", e));
 
+                let url = `${API_URL}/api/leads?limit=500`;
                 if (currentFilter) url += `&bucket=${currentFilter}`;
 
-                const [leadsRes, statsRes] = await Promise.all([fetch(url), fetch(`${API_URL}/api/leads/stats`)]);
-
-                if (!leadsRes.ok) throw new Error(`Leads API: ${leadsRes.status} ${leadsRes.statusText}`);
-                if (!statsRes.ok) throw new Error(`Stats API: ${statsRes.status} ${statsRes.statusText}`);
+                const leadsRes = await fetch(url);
+                if (!leadsRes.ok) {
+                    const errText = await leadsRes.text();
+                    // Try to parse JSON error
+                    let cleanError = `API Error ${leadsRes.status}`;
+                    try {
+                        const errJson = JSON.parse(errText);
+                        if (errJson.detail) cleanError = errJson.detail;
+                    } catch (e) { cleanError = errText.substring(0, 200); }
+                    throw new Error(cleanError);
+                }
 
                 const leads = await leadsRes.json();
-                const stats = await statsRes.json();
                 renderLeads(leads);
-                updateStats(stats);
                 document.getElementById('last-updated').textContent = "Updated: " + new Date().toLocaleTimeString();
             } catch (e) {
                 console.error("Fetch Data Error", e);
                 const list = document.getElementById('lead-list');
                 list.innerHTML = `<div class="flex flex-col items-center justify-center py-20 text-red-400 opacity-80">
                     <i data-lucide="alert-triangle" class="w-12 h-12 mb-2"></i>
-                    <p class="font-medium">Connection Error</p>
-                    <pre class="text-xs bg-black/20 p-2 rounded mt-2 text-red-300/50">${e.message}</pre>
+                    <p class="font-bold text-lg">System Error</p>
+                    <div class="bg-black/40 p-3 rounded-lg border border-red-500/20 mt-4 max-w-md text-center">
+                        <code class="text-xs font-mono text-red-200 block break-words whitespace-pre-wrap">${e.message}</code>
+                    </div>
+                     <button onclick="fetchData()" class="mt-4 px-4 py-2 bg-white/10 hover:bg-white/20 rounded text-sm text-white transition-colors">Retry Connection</button>
                 </div>`;
                 lucide.createIcons();
             }
