@@ -336,6 +336,17 @@ class StratosphereEngine:
             )
             db.add(lead)
             db.commit()
+            db.refresh(lead)
+
+            # --- ENRICHMENT TRIGGER ---
+            try:
+                from enrichment.pipeline import EnrichmentPipeline
+                pipeline = EnrichmentPipeline(db)
+                await pipeline.process_lead(lead)
+                db.commit() # Save Qualification Status
+                self.logger.info(f"✨ Ingested & Enriched: {lead.project_name} -> {lead.bucket}")
+            except Exception as ev:
+                self.logger.error(f"Enrichment Error for {lead.project_name}: {ev}")
             
             self.state["stats"]["new_added"] += 1
             self.state["discovered"] += 1
