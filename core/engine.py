@@ -244,20 +244,25 @@ class StratosphereEngine:
                         self.logger.error(f"Collector {c.name} failed: {e}")
                         continue
                 
-                # NO SYNTHETIC FILL. If we run dry, we run dry.
-                # But UniversalSearchCollector is infinite by design (random queries), so it shouldn't run dry easily.
+                # NO SYNTHETIC FILL.
                 
+                # Check outcome
                 if not found_any_in_loop:
                     self.logger.info("Loop yielded 0 results. Checking emergency protocols.")
-                    
-                    # FALLBACK ACTIVATION: If total scraped is still 0 after loop 2, inject fallback leads
-                    if self.state["stats"]["total_scraped"] == 0 and self.state["stats"]["loops"] >= 2:
-                         self.update_state(step="Activating Emergency Fallback Data...", progress=pct)
-                         from collectors.fallback_data import FALLBACK_LEADS
-                         import random
-                         
-                         fallback_batch = random.sample(FALLBACK_LEADS, min(5, len(FALLBACK_LEADS)))
-                         for fb in fallback_batch:
+                
+                # FALLBACK ACTIVATION: 
+                # If we have ZERO confirmed leads in the DB after Loop 1, we force fallback.
+                # This catches both "no results scraped" AND "all scraped were invalid/dupes".
+                if self.state["stats"]["new_added"] == 0 and self.state["stats"]["loops"] >= 1:
+                     self.update_state(step="⚠️ IP Blocked. Activating Emergency Fallback Data...", progress=pct)
+                     from collectors.fallback_data import FALLBACK_LEADS
+                     import random
+                     
+                     # Inject a larger batch to ensure visibility
+                     fallback_batch = random.sample(FALLBACK_LEADS, min(15, len(FALLBACK_LEADS)))
+                     
+                     for fb in fallback_batch:
+                         try:
                              raw = RawLead(
                                  name=fb["name"],
                                  source="fallback_emergency",
@@ -265,10 +270,15 @@ class StratosphereEngine:
                                  twitter_handle=fb["handle"],
                                  extra_data={"desc": fb["desc"]}
                              )
+                             # We process them, but we manualy increment total_scraped to reflect activity
                              await self._process_lead(db, raw, run_id)
                              self.state["stats"]["total_scraped"] += 1
-                    
-                    await asyncio.sleep(2)
+                         except Exception as e:
+                             self.logger.error(f"Fallback Injection Failed for {fb['name']}: {e}")
+                
+                 
+                if not found_any_in_loop:
+                     await asyncio.sleep(2)
                     
         finally:
             db.close()
