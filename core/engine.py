@@ -94,7 +94,7 @@ class StratosphereEngine:
                 XKeywordCollector(),
             ]
             
-            target_leads = 1000 
+            target_leads = 200 # Realistic CT Radar Target per run
             max_loops = 50 
             
             while self.state["stats"]["new_added"] < target_leads and self.state["stats"]["loops"] < max_loops:
