@@ -1,4 +1,80 @@
 import asyncio
+import random
+import uuid
+from sqlalchemy.orm import Session
+from storage.database import SessionLocal
+from storage.models import Lead
+from collectors.x_keywords import XKeywordCollector
+
+# Batching & Lead Generation Logic
+class LeadBatchGenerator:
+    def __init__(self, batch_size=50):
+        self.batch_size = batch_size
+        self.max_consecutive_duplicates = 10
+        self.search_rotations = [
+            {"keywords": ["crypto", "defi", "web3", "nft", "blockchain"], "locations": ["", "US", "UK", "Singapore", "Germany"]},
+            {"keywords": ["ai", "builder", "founder", "venture"], "locations": ["US", "India", "Canada"]}
+        ]
+        self._reset_rotation_index()
+
+    def _reset_rotation_index(self):
+        self.rotation_index = 0
+        self.keyword_index = 0
+        self.location_index = 0
+
+    def rotate_search(self):
+        self.keyword_index = (self.keyword_index + 1) % len(self.search_rotations[self.rotation_index]['keywords'])
+        if self.keyword_index == 0:
+            self.location_index = (self.location_index + 1) % len(self.search_rotations[self.rotation_index]['locations'])
+            if self.location_index == 0:
+                self.rotation_index = (self.rotation_index + 1) % len(self.search_rotations)
+
+    def current_search_params(self):
+        sr = self.search_rotations[self.rotation_index]
+        kw = sr['keywords'][self.keyword_index]
+        loc = sr['locations'][self.location_index]
+        return kw, loc
+
+    def generate_unique_leads(self):
+        new_leads = []
+        found_count = 0
+        duplicate_streak = 0
+        db: Session = SessionLocal()
+        try:
+            collector = XKeywordCollector()
+            while found_count < self.batch_size:
+                keyword, location = self.current_search_params()
+                candidates = collector.scrape_profiles(keyword=keyword, location=location)
+                for c in candidates:
+                    # Deduplication by unique external id or url
+                    if db.query(Lead).filter((Lead.external_id == c["external_id"]) | (Lead.url == c["url"])).first():
+                        duplicate_streak += 1
+                        if duplicate_streak > self.max_consecutive_duplicates:
+                            self.rotate_search()
+                            duplicate_streak = 0
+                        continue
+                    # Ensure profile_image_url is captured
+                    lead = Lead(
+                        name=c.get("name"),
+                        username=c.get("username"),
+                        url=c.get("url"),
+                        external_id=c.get("external_id"),
+                        profile_image_url=c.get("profile_image_url", ""),  # Store image url
+                        added_by="engine-batch-{}".format(uuid.uuid4()),
+                        ready_to_dm=False
+                    )
+                    db.add(lead)
+                    db.commit()  # Insert one at a time to keep DB state updated
+                    db.refresh(lead)
+                    new_leads.append(lead)
+                    found_count += 1
+                    duplicate_streak = 0
+                    if found_count >= self.batch_size:
+                        break
+        finally:
+            db.close()
+        return new_leads  # Each Lead here includes profile_image_url
+
 import time
 import uuid
 import random
