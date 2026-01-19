@@ -10,6 +10,8 @@ from collectors.defillama import DeFiLlamaCollector
 from collectors.cryptorank import CryptoRankCollector
 from collectors.x_keywords import XKeywordCollector
 from collectors.search import UniversalSearchCollector
+from collectors.github import GithubCollector
+from collectors.launchpads import LaunchpadCollector
 from enrichment.pipeline import EnrichmentPipeline
 from core.logger import app_logger
 import urllib.parse
@@ -95,14 +97,6 @@ class StratosphereEngine:
              # If stopped manually
              if self.stop_requested:
                  self.update_state("done", step="Stopped by user")
-
-    async def _run_logic(self, mode, run_id):
-        db = SessionLocal()
-        try:
-from collectors.github import GithubCollector
-from collectors.launchpads import LaunchpadCollector
-
-# ... imports ...
 
     async def _run_logic(self, mode, run_id):
         db = SessionLocal()
