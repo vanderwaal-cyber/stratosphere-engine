@@ -1,7 +1,6 @@
-from datetime import datetime, timedelta, timedelta
+from datetime import datetime, timedelta
 
-# ... (inside class)
-
+class Engine:
     async def _run_logic(self, mode):
         db = SessionLocal()
         try:
