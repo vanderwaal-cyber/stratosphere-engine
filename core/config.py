@@ -9,7 +9,8 @@ class Settings(BaseSettings):
     # Storage
     BASE_DIR: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     # Default to SQLite for local, but prioritize Env Var for prod
-    DATABASE_URL: str = os.getenv("DATABASE_URL", f"sqlite:///{os.path.join(BASE_DIR, 'stratosphere.db')}")
+    # FORCE FRESH DB: v3.5 to ensure all columns (score, profile_image_url) exist
+    DATABASE_URL: str = os.getenv("DATABASE_URL", f"sqlite:///{os.path.join(BASE_DIR, 'stratosphere_v3_5.db')}")
     
     # Collection limits
     MAX_CONCURRENT_REQUESTS: int = 5
