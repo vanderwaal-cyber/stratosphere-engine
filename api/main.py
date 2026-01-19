@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy import desc, text
 from typing import List, Optional
 from datetime import datetime
 from pydantic import BaseModel
@@ -16,7 +16,16 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 # Ensure tables exist (Zero-setup)
+# Ensure tables exist (Zero-setup)
 Base.metadata.create_all(bind=engine)
+
+# Manual Migration for run_id
+try:
+    with engine.connect() as conn:
+        conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS run_id VARCHAR"))
+        conn.commit()
+except Exception as e:
+    print(f"Migration Warning: {e}")
 
 # Rate Limiter
 limiter = Limiter(key_func=get_remote_address)
@@ -52,6 +61,7 @@ def health_check():
 
 class RunRequest(BaseModel):
     mode: str = "fresh"
+    run_id: Optional[str] = None # Frontend can pass unique ID
 
 @app.post("/pipeline/run")
 @limiter.limit("5/minute")
@@ -60,8 +70,8 @@ async def trigger_pipeline(request: Request, req: RunRequest = RunRequest(), bac
         if engine_instance.state["state"] == "running":
             return {"status": "busy", "message": "Pipeline already running"}
             
-        background_tasks.add_task(engine_instance.run, mode=req.mode)
-        return {"status": "started", "message": f"Pipeline running in background ({req.mode})"}
+        background_tasks.add_task(engine_instance.run, mode=req.mode, run_id=req.run_id)
+        return {"status": "started", "message": f"Pipeline running in background ({req.mode})", "run_id": req.run_id}
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -91,6 +101,7 @@ def read_dashboard():
 
 # Schemas
 class LeadBase(BaseModel):
+    id: int
     project_name: str
     twitter_handle: Optional[str] = None
     domain: Optional[str] = None
@@ -105,17 +116,22 @@ class LeadBase(BaseModel):
     email: Optional[str] = None
     reject_reason: Optional[str] = None
     created_at: Optional[datetime] = None
+    run_id: Optional[str] = None
 
     class Config:
         from_attributes = True
 
 @app.get("/leads", response_model=List[LeadBase])
 @limiter.limit("60/minute")
-async def read_leads(request: Request, skip: int = 0, limit: int = 100, bucket: Optional[str] = None, created_after: Optional[datetime] = None, db: Session = Depends(get_db)):
+async def read_leads(request: Request, skip: int = 0, limit: int = 100, bucket: Optional[str] = None, run_id: Optional[str] = None, created_after: Optional[datetime] = None, db: Session = Depends(get_db)):
     query = db.query(LeadModel)
     if bucket:
         query = query.filter(LeadModel.bucket == bucket)
-    if created_after:
+    
+    # Priority Filter: Run ID (Strict)
+    if run_id:
+        query = query.filter(LeadModel.run_id == run_id)
+    elif created_after:
         query = query.filter(LeadModel.created_at >= created_after)
         
     leads = query.order_by(LeadModel.created_at.desc()).offset(skip).limit(limit).all()
