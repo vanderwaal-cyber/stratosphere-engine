@@ -15,23 +15,37 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
-# Ensure tables exist (Zero-setup)
-# Ensure tables exist (Zero-setup)
-Base.metadata.create_all(bind=engine)
-
-# Manual Migration for run_id
-try:
-    with engine.connect() as conn:
-        conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS run_id VARCHAR"))
-        conn.commit()
-except Exception as e:
-    print(f"Migration Warning: {e}")
-
 # Rate Limiter
 limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(title="Stratosphere API", version="2.0.0")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+@app.on_event("startup")
+async def startup_db():
+    print("Running DB Startup...")
+    # Ensure tables exist
+    Base.metadata.create_all(bind=engine)
+    
+    # Robust Migration
+    try:
+        with engine.connect() as conn:
+            # Check if column exists logic could be here, but IF NOT EXISTS is safe enough
+            conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS run_id VARCHAR"))
+            conn.commit()
+            print("Migration (run_id) completed successfully.")
+    except Exception as e:
+        print(f"Migration Error: {e}")
+
+@app.get("/debug/schema")
+def debug_schema():
+    try:
+        from sqlalchemy import inspect
+        insp = inspect(engine)
+        columns = [c['name'] for c in insp.get_columns("leads")]
+        return {"columns": columns, "run_id_exists": "run_id" in columns}
+    except Exception as e:
+        return {"error": str(e)}
 
 # Serve Assets
 try:

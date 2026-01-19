@@ -327,6 +327,10 @@
                 }
 
                 const [leadsRes, statsRes] = await Promise.all([fetch(url), fetch(`${API_URL}/api/leads/stats`)]);
+
+                if (!leadsRes.ok) throw new Error(`Leads API: ${leadsRes.status} ${leadsRes.statusText}`);
+                if (!statsRes.ok) throw new Error(`Stats API: ${statsRes.status} ${statsRes.statusText}`);
+
                 const leads = await leadsRes.json();
                 const stats = await statsRes.json();
                 renderLeads(leads);
@@ -335,7 +339,11 @@
             } catch (e) {
                 console.error("Fetch Data Error", e);
                 const list = document.getElementById('lead-list');
-                list.innerHTML = `<div class="flex flex-col items-center justify-center py-20 text-red-400 opacity-80"><i data-lucide="alert-triangle" class="w-12 h-12 mb-2"></i><p class="font-medium">Connection Error</p></div>`;
+                list.innerHTML = `<div class="flex flex-col items-center justify-center py-20 text-red-400 opacity-80">
+                    <i data-lucide="alert-triangle" class="w-12 h-12 mb-2"></i>
+                    <p class="font-medium">Connection Error</p>
+                    <pre class="text-xs bg-black/20 p-2 rounded mt-2 text-red-300/50">${e.message}</pre>
+                </div>`;
                 lucide.createIcons();
             }
         }
