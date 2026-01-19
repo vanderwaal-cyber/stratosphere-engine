@@ -154,376 +154,375 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
+
+        @keyframes shine {
+            0% {
+                transform: translateX(-100%) skewX(-20deg);
+            }
+
+            100% {
+                transform: translateX(200%) skewX(-20deg);
+            }
+        }
     </style>
 </head>
 
-<body class="min-h-screen text-gray-200 selection:bg-violet-500 selection:text-white pb-20 md:pb-0">
+<body class="min-h-screen text-gray-200 selection:bg-violet-500 selection:text-white pb-32 md:pb-0 overflow-x-hidden">
 
     <!-- Ambient Orbs -->
     <div
-        class="fixed top-20 left-20 w-96 h-96 bg-violet-600/20 rounded-full blur-[128px] pointer-events-none animate-pulse-soft">
+        class="fixed top-0 left-[-20%] w-[800px] h-[800px] bg-violet-600/10 rounded-full blur-[128px] pointer-events-none animate-pulse-soft">
     </div>
     <div
-        class="fixed bottom-20 right-20 w-96 h-96 bg-indigo-600/20 rounded-full blur-[128px] pointer-events-none animate-pulse-soft">
+        class="fixed bottom-0 right-[-20%] w-[600px] h-[600px] bg-indigo-900/20 rounded-full blur-[128px] pointer-events-none">
     </div>
 
-    <div class="max-w-7xl mx-auto px-4 md:px-6 relative z-10 pt-6">
+    <div class="max-w-7xl mx-auto px-4 md:px-6 relative z-10 pt-4 md:pt-8">
 
         <!-- UNIFIED GLASS HEADER -->
         <header
-            class="glass-panel rounded-2xl p-6 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl">
+            class="glass-panel rounded-2xl p-5 md:p-6 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl border-white/5 relative overflow-hidden group">
+
+            <!-- Shine Effect -->
+            <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:animate-[shine_1.5s_ease-in-out_infinite]"
+                style="animation-play-state: paused;"></div>
+
             <!-- Brand Section -->
-            <div class="flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
+            <div class="flex flex-col md:flex-row items-center gap-6 text-center md:text-left z-10">
                 <div class="relative group">
                     <div
-                        class="absolute -inset-1 bg-gradient-to-r from-violet-600 to-indigo-600 rounded-xl blur opacity-40 group-hover:opacity-75 transition duration-500">
+                        class="absolute -inset-1 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-2xl blur opacity-30 group-hover:opacity-60 transition duration-500">
                     </div>
                     <img id="logo-img" src="/assets/brand_logo.jpg" alt="Logo"
-                        class="relative w-20 h-20 md:w-24 md:h-24 rounded-xl shadow-lg object-cover border-2 border-white/10">
+                        class="relative w-24 h-24 rounded-2xl shadow-2xl object-cover border border-white/10 ring-1 ring-white/5">
                 </div>
 
                 <div>
-                    <h1 class="text-3xl md:text-4xl font-bold text-white tracking-tight mb-2">Stratosphere <span
-                            class="text-violet-400 font-light">Radar</span></h1>
+                    <h1 class="text-4xl md:text-5xl font-bold text-white tracking-tight mb-2 drop-shadow-lg">
+                        Stratosphere <span
+                            class="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-indigo-300 font-light">Radar</span>
+                    </h1>
                     <div class="flex flex-wrap justify-center md:justify-start gap-2">
                         <span
-                            class="px-3 py-1 rounded-full text-xs font-semibold bg-violet-500/20 text-violet-200 border border-violet-500/30">v3.5
+                            class="px-3 py-1 rounded-full text-xs font-bold bg-violet-500/10 text-violet-200 border border-violet-500/20 shadow-inner shadow-violet-500/5">v3.5
                             Active</span>
+
+                        <!-- Status Badge with ID restored for JS -->
                         <div
-                            class="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                            System Online
+                            class="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-inner shadow-emerald-500/5">
+                            <span id="status-indicator"
+                                class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_currentColor]"></span>
+                            <span id="status-text">System Online</span>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Action Cluster -->
-            <div class="flex flex-wrap justify-center gap-3 w-full md:w-auto">
+            <div class="flex flex-wrap justify-center items-center gap-3 w-full md:w-auto z-10">
                 <div id="loading-indicator"
-                    class="hidden flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 shadow-inner">
-                    <div class="w-3 h-3 border-2 border-violet-400 border-t-transparent rounded-full animate-spin">
+                    class="hidden flex items-center gap-2 px-4 py-2 rounded-full bg-black/40 border border-white/10 backdrop-blur-md">
+                    <div class="w-4 h-4 border-2 border-violet-400 border-t-transparent rounded-full animate-spin">
                     </div>
-                    <span class="text-xs font-medium text-violet-200">Scanning Grid...</span>
+                    <span id="loading-text" class="text-xs font-medium text-violet-200">Processing...</span>
                 </div>
 
                 <button onclick="stopPipeline()" id="btn-stop"
-                    class="hidden px-4 py-2 rounded-xl text-xs font-bold text-red-300 bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-colors">ABORT</button>
+                    class="hidden px-5 py-2.5 rounded-xl text-xs font-bold text-red-200 bg-red-500/20 border border-red-500/30 hover:bg-red-500/30 transition-all shadow-[0_0_15px_rgba(239,68,68,0.2)]">STOP
+                    SYSTEM</button>
 
                 <button onclick="window.open('/leads/export?run_id=' + (currentRunId || ''), '_blank')"
-                    class="p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:scale-105 active:scale-95 transition-all text-gray-300 hover:text-white"
+                    class="p-3.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:scale-105 active:scale-95 transition-all text-gray-400 hover:text-white group"
                     title="Export CSV">
-                    <i data-lucide="download" class="w-5 h-5"></i>
+                    <i data-lucide="download" class="w-5 h-5 group-hover:text-violet-300 transition-colors"></i>
                 </button>
 
                 <button id="btn-generate" onclick="handleGenerate()"
-                    class="relative group px-8 py-3 rounded-xl bg-white text-black font-bold text-sm shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:shadow-[0_0_30px_rgba(124,58,237,0.5)] transition-all active:scale-95 disabled:opacity-50 overflow-hidden w-full md:w-auto">
+                    class="relative group px-10 py-3.5 rounded-xl bg-white text-black font-bold text-sm shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_40px_rgba(124,58,237,0.4)] transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden w-full md:w-auto">
                     <span class="relative z-10 flex items-center justify-center gap-2">
-                        <i data-lucide="radar" class="w-4 h-4 text-violet-600"></i>
+                        <i data-lucide="radar"
+                            class="w-5 h-5 text-violet-600 transition-transform group-hover:rotate-180"></i>
                         INITIATE SCAN
                     </span>
                     <div
-                        class="absolute inset-0 bg-gradient-to-r from-violet-200 to-white opacity-0 group-hover:opacity-100 transition-opacity">
+                        class="absolute inset-0 bg-gradient-to-r from-violet-100 via-white to-violet-100 opacity-0 group-hover:opacity-100 transition-opacity">
                     </div>
+                    <!-- Ripple effect container -->
+                    <div class="absolute inset-0 pointer-events-none group-hover:animate-pulse bg-violet-500/10"></div>
                 </button>
             </div>
         </header>
 
         <!-- KPI STATS (Vertical Stack Mobile) -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <!-- Total -->
-            <div class="glass-card p-6 rounded-2xl flex items-center justify-between group">
+            <div class="glass-card p-6 md:p-8 rounded-2xl flex items-center justify-between group cursor-default">
                 <div>
-                    <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-1">Discovered</h3>
+                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mb-2">Discovered</h3>
                     <h2 id="stat-total"
-                        class="text-5xl font-bold text-white group-hover:text-violet-400 transition-colors">0</h2>
+                        class="text-5xl md:text-6xl font-bold text-white group-hover:text-violet-300 transition-colors drop-shadow-md">
+                        0</h2>
                 </div>
                 <div
-                    class="p-4 rounded-xl bg-violet-500/10 text-violet-400 group-hover:scale-110 transition-transform duration-500">
-                    <i data-lucide="database" class="w-8 h-8"></i>
+                    class="p-5 rounded-2xl bg-violet-500/10 text-violet-400 group-hover:scale-110 group-hover:bg-violet-500/20 group-hover:shadow-[0_0_30px_rgba(139,92,246,0.3)] transition-all duration-500">
+                    <i data-lucide="database" class="w-8 h-8 md:w-10 md:h-10"></i>
                 </div>
             </div>
 
             <!-- Ready -->
-            <div class="glass-card p-6 rounded-2xl flex items-center justify-between group">
+            <div class="glass-card p-6 md:p-8 rounded-2xl flex items-center justify-between group cursor-default">
                 <div>
-                    <h3 class="text-sm font-semibold text-emerald-500/80 uppercase tracking-widest mb-1">Ready to DM
-                    </h3>
+                    <h3 class="text-xs font-bold text-emerald-500/60 uppercase tracking-[0.2em] mb-2">Ready to DM</h3>
                     <h2 id="stat-ready"
-                        class="text-5xl font-bold text-white group-hover:text-emerald-400 transition-colors">0</h2>
+                        class="text-5xl md:text-6xl font-bold text-white group-hover:text-emerald-300 transition-colors drop-shadow-md">
+                        0</h2>
                 </div>
                 <div
-                    class="p-4 rounded-xl bg-emerald-500/10 text-emerald-400 group-hover:scale-110 transition-transform duration-500">
-                    <i data-lucide="send" class="w-8 h-8"></i>
+                    class="p-5 rounded-2xl bg-emerald-500/10 text-emerald-400 group-hover:scale-110 group-hover:bg-emerald-500/20 group-hover:shadow-[0_0_30px_rgba(16,185,129,0.3)] transition-all duration-500">
+                    <i data-lucide="send" class="w-8 h-8 md:w-10 md:h-10"></i>
                 </div>
             </div>
 
             <!-- AI -->
-            <div class="glass-card p-6 rounded-2xl flex items-center justify-between group">
+            <div class="glass-card p-6 md:p-8 rounded-2xl flex items-center justify-between group cursor-default">
                 <div>
-                    <h3 class="text-sm font-semibold text-amber-500/80 uppercase tracking-widest mb-1">AI Analyst</h3>
+                    <h3 class="text-xs font-bold text-amber-500/60 uppercase tracking-[0.2em] mb-2">AI Analyst</h3>
                     <h2 id="stat-alt"
-                        class="text-5xl font-bold text-white group-hover:text-amber-400 transition-colors">0</h2>
+                        class="text-5xl md:text-6xl font-bold text-white group-hover:text-amber-300 transition-colors drop-shadow-md">
+                        0</h2>
                 </div>
                 <div
-                    class="p-4 rounded-xl bg-amber-500/10 text-amber-400 group-hover:scale-110 transition-transform duration-500">
-                    <i data-lucide="bot" class="w-8 h-8"></i>
+                    class="p-5 rounded-2xl bg-amber-500/10 text-amber-400 group-hover:scale-110 group-hover:bg-amber-500/20 group-hover:shadow-[0_0_30px_rgba(245,158,11,0.3)] transition-all duration-500">
+                    <i data-lucide="bot" class="w-8 h-8 md:w-10 md:h-10"></i>
                 </div>
             </div>
         </div>
 
         <!-- MAIN FEED -->
-        <div class="glass-panel rounded-2xl flex flex-col h-[calc(100vh-420px)] min-h-[400px]">
+        <div
+            class="glass-panel rounded-2xl flex flex-col h-[calc(100vh-480px)] min-h-[500px] border-t border-white/10 shadow-2xl relative overflow-hidden">
             <!-- Feed Headers -->
             <div
-                class="p-5 border-b border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0 bg-black/20">
+                class="p-5 border-b border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0 bg-black/20 backdrop-blur-xl z-20">
                 <div class="flex items-center gap-3">
-                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
-                        <i data-lucide="list-filter" class="w-5 h-5 text-gray-400"></i> Lead Stream
-                    </h3>
-                    <div id="progress-container" class="hidden w-32 h-1.5 bg-gray-800 rounded-full overflow-hidden">
-                        <div id="progress-bar" class="h-full bg-violet-500 transition-all duration-500 w-0"></div>
-                    </div>
-                </div>
-
-                <div class="flex p-1 bg-black/40 rounded-xl border border-white/5 overflow-x-auto no-scrollbar">
-                    <button onclick="setFilter('READY_TO_DM')" id="tab-ready"
-                        class="flex-1 whitespace-nowrap px-4 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition-colors uppercase tracking-wide">Ready
-                        to DM</button>
-                    <button onclick="setFilter('NEEDS_ALT_OUTREACH')" id="tab-ai"
-                        class="flex-1 whitespace-nowrap px-4 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition-colors uppercase tracking-wide">AI
-                        Required</button>
-                    <button onclick="setFilter('')" id="tab-all"
-                        class="flex-1 whitespace-nowrap px-4 py-2 text-xs font-bold rounded-lg bg-violet-600 text-white shadow-lg shadow-violet-900/50 transition-all uppercase tracking-wide">All
-                        Signals</button>
                 </div>
             </div>
 
-            <!-- Lead List SCROLLABLE AREA -->
-            <div id="lead-list" class="flex-1 p-4 space-y-3 overflow-y-auto custom-scrollbar relative"></div>
+            <!-- JS Logic -->
+            <script>
+                const API_URL = window.location.origin;
+                let currentFilter = '';
+                let pollingInterval = null;
+                let isRunning = false;
 
-            <!-- Footer -->
-            <div class="p-4 border-t border-white/5 text-center text-xs text-gray-600">
-                Stratosphere Engine v2.0 • Pro Edition
-            </div>
-        </div>
-    </div>
+                document.addEventListener('DOMContentLoaded', () => {
+                    lucide.createIcons();
+                    const logo = document.getElementById('logo-img');
+                    if (logo) logo.src = '/assets/brand_logo.jpg?v=' + new Date().getTime();
+                    fetchData();
+                    startPolling();
+                    const btn = document.getElementById('btn-generate');
+                    if (btn) btn.onclick = handleGenerate;
+                });
 
-    <!-- JS Logic -->
-    <script>
-        const API_URL = window.location.origin;
-        let currentFilter = '';
-        let pollingInterval = null;
-        let isRunning = false;
+                let currentRunId = null;
+                let lastRunTime = null; // Legacy Fallback
 
-        document.addEventListener('DOMContentLoaded', () => {
-            lucide.createIcons();
-            const logo = document.getElementById('logo-img');
-            if (logo) logo.src = '/assets/brand_logo.jpg?v=' + new Date().getTime();
-            fetchData();
-            startPolling();
-            const btn = document.getElementById('btn-generate');
-            if (btn) btn.onclick = handleGenerate;
-        });
+                function generateUUID() {
+                    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                        return v.toString(16);
+                    });
+                }
 
-        let currentRunId = null;
-        let lastRunTime = null; // Legacy Fallback
+                async function handleGenerate() {
+                    setLoadingState(true);
+                    currentRunId = generateUUID(); // NEW: Unique Ticket for this run
+                    lastRunTime = new Date().toISOString();
 
-        function generateUUID() {
-            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-                return v.toString(16);
-            });
-        }
-
-        async function handleGenerate() {
-            setLoadingState(true);
-            currentRunId = generateUUID(); // NEW: Unique Ticket for this run
-            lastRunTime = new Date().toISOString();
-
-            // Clear Immediately
-            document.getElementById('lead-list').innerHTML = `
+                    // Clear Immediately
+                    document.getElementById('lead-list').innerHTML = `
                 <div class="flex flex-col items-center justify-center py-20 animate-pulse">
                     <div class="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin mb-4"></div>
                     <p class="text-gray-400 text-sm">Scanning signal...</p>
                     <p class="text-xs text-gray-600 font-mono mt-1">ID: ${currentRunId.substring(0, 8)}</p>
                 </div>`;
 
-            try {
-                const modeSelect = document.getElementById('run-mode');
-                const mode = modeSelect ? modeSelect.value : 'fresh';
-
-                if (mode !== 'fresh') {
-                    currentRunId = null; // Show all for refresh
-                    lastRunTime = null;
-                }
-
-                const res = await fetch(`${API_URL}/pipeline/run`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ mode: mode, run_id: currentRunId })
-                });
-                const data = await res.json();
-                if (data.status === 'busy') alert("Engine is already running!");
-                else {
-                    document.getElementById('progress-bar').style.width = '5%';
-                    startPolling();
-                }
-            } catch (e) {
-                console.error(e);
-                alert(`Failed to start engine: ${e.message || e}`);
-                setLoadingState(false);
-                currentRunId = null;
-                fetchData();
-            }
-        }
-
-        async function stopPipeline() {
-            if (!confirm("Are you sure you want to stop the engine?")) return;
-            try {
-                await fetch(`${API_URL}/pipeline/stop`, { method: 'POST' });
-                setLoadingState(false, "Stopping...");
-                setTimeout(fetchData, 1000);
-            } catch (e) {
-                alert("Failed to stop: " + e.message);
-            }
-        }
-
-        function setFilter(bucket) {
-            currentFilter = bucket;
-            // Update UI Tabs
-            document.querySelectorAll('button[id^="tab-"]').forEach(btn => {
-                btn.classList.remove('bg-surfaceHighlight', 'text-white', 'shadow-sm', 'border-white/10');
-                btn.classList.add('text-gray-400', 'hover:text-white');
-            });
-
-            let activeId = 'tab-all';
-            if (bucket === 'READY_TO_DM') activeId = 'tab-ready';
-            if (bucket === 'NEEDS_ALT_OUTREACH') activeId = 'tab-ai';
-
-            const activeBtn = document.getElementById(activeId);
-            activeBtn.classList.remove('text-gray-400', 'hover:text-white');
-            activeBtn.classList.add('bg-surfaceHighlight', 'text-white', 'shadow-sm', 'border-white/10');
-
-            fetchData();
-        }
-
-        function startPolling() {
-            if (pollingInterval) return;
-            // Immediate check
-            pollStatus();
-            pollingInterval = setInterval(pollStatus, 2000);
-        }
-
-        async function pollStatus() {
-            try {
-                const res = await fetch(`${API_URL}/pipeline/status`);
-                const state = await res.json();
-                renderStatus(state);
-
-                const bar = document.getElementById('progress-bar');
-                const container = document.getElementById('progress-container');
-                const loadingText = document.getElementById('loading-text');
-
-                if (state.state === 'running') {
-                    if (!isRunning) setLoadingState(true, state.current_step || "Processing...");
-                    container.classList.remove('hidden');
-                    // Smooth progress
-                    bar.style.width = `${state.progress}%`;
-                    loadingText.textContent = `${state.current_step} (${state.progress}%)`;
-
-                    // Live Update stats
-                    updateStats(state);
-                } else {
-                    if (isRunning) {
-                        // Just finished
-                        setLoadingState(false);
-                        container.classList.add('hidden');
-                        bar.style.width = '0%';
-                        fetchData(); // Final Refresh
-
-                        if (state.state === 'error') {
-                            alert("Engine Error: " + state.current_step);
-                        } else if (state.state === 'done' && state.run_id === currentRunId) {
-                            // Only notify if it was OUR run
-                            // Optional toast?
-                        }
-                    }
-                    clearInterval(pollingInterval);
-                    pollingInterval = null;
-                }
-            } catch (e) {
-                console.error("Poll Error", e);
-            }
-        }
-
-        function renderStatus(state) {
-            const statusEl = document.getElementById('status-text');
-            const indicator = document.getElementById('status-indicator');
-            if (!statusEl || !indicator) return;
-
-            let text = "Idle";
-            let colorClass = "text-gray-400";
-            let dotClass = "bg-gray-500";
-
-            switch (state.state) {
-                case "running":
-                    text = state.current_step || "Running";
-                    colorClass = "text-emerald-400";
-                    dotClass = "bg-emerald-500";
-                    break;
-                case "error":
-                    text = state.current_step || "Error";
-                    colorClass = "text-red-400";
-                    dotClass = "bg-red-500";
-                    break;
-                case "done":
-                    text = "Complete";
-                    colorClass = "text-emerald-300";
-                    dotClass = "bg-emerald-400";
-                    break;
-                case "stopping":
-                    text = "Stopping...";
-                    colorClass = "text-amber-300";
-                    dotClass = "bg-amber-400";
-                    break;
-            }
-
-            statusEl.textContent = text;
-            statusEl.className = `font-medium ${colorClass}`;
-            indicator.className = `absolute bottom-2 right-2 w-4 h-4 rounded-full border-2 border-background animate-pulse ${dotClass}`;
-        }
-
-        async function fetchData() {
-            try {
-                // Fetch Stats Independently (so one failure doesn't block the other)
-                fetch(`${API_URL}/api/leads/stats`)
-                    .then(res => res.json())
-                    .then(stats => updateStats(stats))
-                    .catch(e => console.warn("Stats failed", e));
-
-                let url = `${API_URL}/api/leads?limit=500`;
-                if (currentFilter) url += `&bucket=${currentFilter}`;
-
-                const leadsRes = await fetch(url);
-                if (!leadsRes.ok) {
-                    const errText = await leadsRes.text();
-                    // Try to parse JSON error
-                    let cleanError = `API Error ${leadsRes.status}`;
                     try {
-                        const errJson = JSON.parse(errText);
-                        if (errJson.detail) cleanError = errJson.detail;
-                    } catch (e) { cleanError = errText.substring(0, 200); }
-                    throw new Error(cleanError);
+                        const modeSelect = document.getElementById('run-mode');
+                        const mode = modeSelect ? modeSelect.value : 'fresh';
+
+                        if (mode !== 'fresh') {
+                            currentRunId = null; // Show all for refresh
+                            lastRunTime = null;
+                        }
+
+                        const res = await fetch(`${API_URL}/pipeline/run`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ mode: mode, run_id: currentRunId })
+                        });
+                        const data = await res.json();
+                        if (data.status === 'busy') alert("Engine is already running!");
+                        else {
+                            document.getElementById('progress-bar').style.width = '5%';
+                            startPolling();
+                        }
+                    } catch (e) {
+                        console.error(e);
+                        alert(`Failed to start engine: ${e.message || e}`);
+                        setLoadingState(false);
+                        currentRunId = null;
+                        fetchData();
+                    }
                 }
 
-                const leads = await leadsRes.json();
-                renderLeads(leads);
-                document.getElementById('last-updated').textContent = "Updated: " + new Date().toLocaleTimeString();
-            } catch (e) {
-                console.error("Fetch Data Error", e);
-                const list = document.getElementById('lead-list');
-                list.innerHTML = `<div class="flex flex-col items-center justify-center py-20 text-red-400 opacity-80">
+                async function stopPipeline() {
+                    if (!confirm("Are you sure you want to stop the engine?")) return;
+                    try {
+                        await fetch(`${API_URL}/pipeline/stop`, { method: 'POST' });
+                        setLoadingState(false, "Stopping...");
+                        setTimeout(fetchData, 1000);
+                    } catch (e) {
+                        alert("Failed to stop: " + e.message);
+                    }
+                }
+
+                function setFilter(bucket) {
+                    currentFilter = bucket;
+                    // Update UI Tabs
+                    document.querySelectorAll('button[id^="tab-"]').forEach(btn => {
+                        btn.classList.remove('bg-surfaceHighlight', 'text-white', 'shadow-sm', 'border-white/10');
+                        btn.classList.add('text-gray-400', 'hover:text-white');
+                    });
+
+                    let activeId = 'tab-all';
+                    if (bucket === 'READY_TO_DM') activeId = 'tab-ready';
+                    if (bucket === 'NEEDS_ALT_OUTREACH') activeId = 'tab-ai';
+
+                    const activeBtn = document.getElementById(activeId);
+                    activeBtn.classList.remove('text-gray-400', 'hover:text-white');
+                    activeBtn.classList.add('bg-surfaceHighlight', 'text-white', 'shadow-sm', 'border-white/10');
+
+                    fetchData();
+                }
+
+                function startPolling() {
+                    if (pollingInterval) return;
+                    // Immediate check
+                    pollStatus();
+                    pollingInterval = setInterval(pollStatus, 2000);
+                }
+
+                async function pollStatus() {
+                    try {
+                        const res = await fetch(`${API_URL}/pipeline/status`);
+                        const state = await res.json();
+                        renderStatus(state);
+
+                        const bar = document.getElementById('progress-bar');
+                        const container = document.getElementById('progress-container');
+                        const loadingText = document.getElementById('loading-text');
+
+                        if (state.state === 'running') {
+                            if (!isRunning) setLoadingState(true, state.current_step || "Processing...");
+                            container.classList.remove('hidden');
+                            // Smooth progress
+                            bar.style.width = `${state.progress}%`;
+                            loadingText.textContent = `${state.current_step} (${state.progress}%)`;
+
+                            // Live Update stats
+                            updateStats(state);
+                        } else {
+                            if (isRunning) {
+                                // Just finished
+                                setLoadingState(false);
+                                container.classList.add('hidden');
+                                bar.style.width = '0%';
+                                fetchData(); // Final Refresh
+
+                                if (state.state === 'error') {
+                                    alert("Engine Error: " + state.current_step);
+                                } else if (state.state === 'done' && state.run_id === currentRunId) {
+                                    // Only notify if it was OUR run
+                                    // Optional toast?
+                                }
+                            }
+                            clearInterval(pollingInterval);
+                            pollingInterval = null;
+                        }
+                    } catch (e) {
+                        console.error("Poll Error", e);
+                    }
+                }
+
+                function renderStatus(state) {
+                    const statusEl = document.getElementById('status-text');
+                    const indicator = document.getElementById('status-indicator');
+                    if (!statusEl || !indicator) return;
+
+                    let text = "Idle";
+                    let colorClass = "text-gray-400";
+                    let dotClass = "bg-gray-500";
+
+                    switch (state.state) {
+                        case "running":
+                            text = state.current_step || "Running";
+                            colorClass = "text-emerald-400";
+                            dotClass = "bg-emerald-500";
+                            break;
+                        case "error":
+                            text = state.current_step || "Error";
+                            colorClass = "text-red-400";
+                            dotClass = "bg-red-500";
+                            break;
+                        case "done":
+                            text = "Complete";
+                            colorClass = "text-emerald-300";
+                            dotClass = "bg-emerald-400";
+                            break;
+                        case "stopping":
+                            text = "Stopping...";
+                            colorClass = "text-amber-300";
+                            dotClass = "bg-amber-400";
+                            break;
+                    }
+
+                    statusEl.textContent = text;
+                    statusEl.className = `font-medium ${colorClass}`;
+                    indicator.className = `absolute bottom-2 right-2 w-4 h-4 rounded-full border-2 border-background animate-pulse ${dotClass}`;
+                }
+
+                async function fetchData() {
+                    try {
+                        // Fetch Stats Independently (so one failure doesn't block the other)
+                        fetch(`${API_URL}/api/leads/stats`)
+                            .then(res => res.json())
+                            .then(stats => updateStats(stats))
+                            .catch(e => console.warn("Stats failed", e));
+
+                        let url = `${API_URL}/api/leads?limit=500`;
+                        if (currentFilter) url += `&bucket=${currentFilter}`;
+
+                        const leadsRes = await fetch(url);
+                        if (!leadsRes.ok) {
+                            const errText = await leadsRes.text();
+                            // Try to parse JSON error
+                            let cleanError = `API Error ${leadsRes.status}`;
+                            try {
+                                const errJson = JSON.parse(errText);
+                                if (errJson.detail) cleanError = errJson.detail;
+                            } catch (e) { cleanError = errText.substring(0, 200); }
+                            throw new Error(cleanError);
+                        }
+
+                        const leads = await leadsRes.json();
+                        renderLeads(leads);
+                        document.getElementById('last-updated').textContent = "Updated: " + new Date().toLocaleTimeString();
+                    } catch (e) {
+                        console.error("Fetch Data Error", e);
+                        const list = document.getElementById('lead-list');
+                        list.innerHTML = `<div class="flex flex-col items-center justify-center py-20 text-red-400 opacity-80">
                     <i data-lucide="alert-triangle" class="w-12 h-12 mb-2"></i>
                     <p class="font-bold text-lg">System Error</p>
                     <div class="bg-black/40 p-3 rounded-lg border border-red-500/20 mt-4 max-w-md text-center">
@@ -531,91 +530,91 @@
                     </div>
                      <button onclick="fetchData()" class="mt-4 px-4 py-2 bg-white/10 hover:bg-white/20 rounded text-sm text-white transition-colors">Retry Connection</button>
                 </div>`;
-                lucide.createIcons();
-            }
-        }
+                        lucide.createIcons();
+                    }
+                }
 
-        function updateStats(stats) {
-            animateValue('stat-total', parseInt(document.getElementById('stat-total').textContent), stats.total_leads || 0, 1000);
-            animateValue('stat-ready', parseInt(document.getElementById('stat-ready').textContent), stats.ready_to_dm || 0, 1000);
-            animateValue('stat-alt', parseInt(document.getElementById('stat-alt').textContent), stats.needs_alt_outreach || 0, 1000);
-        }
+                function updateStats(stats) {
+                    animateValue('stat-total', parseInt(document.getElementById('stat-total').textContent), stats.total_leads || 0, 1000);
+                    animateValue('stat-ready', parseInt(document.getElementById('stat-ready').textContent), stats.ready_to_dm || 0, 1000);
+                    animateValue('stat-alt', parseInt(document.getElementById('stat-alt').textContent), stats.needs_alt_outreach || 0, 1000);
+                }
 
-        function setLoadingState(loading, text = "Initializing Engine...") {
-            const btn = document.getElementById('btn-generate');
-            const stopBtn = document.getElementById('btn-stop');
-            const indicator = document.getElementById('loading-indicator');
-            const loadText = document.getElementById('loading-text');
-            isRunning = loading;
-            if (loading) {
-                btn.disabled = true;
-                btn.classList.add('opacity-50', 'cursor-not-allowed');
-                stopBtn.classList.remove('hidden');
-                indicator.classList.remove('hidden');
-                loadText.textContent = text;
-            } else {
-                btn.disabled = false;
-                btn.classList.remove('opacity-50', 'cursor-not-allowed');
-                stopBtn.classList.add('hidden');
-                indicator.classList.add('hidden');
-            }
-        }
+                function setLoadingState(loading, text = "Initializing Engine...") {
+                    const btn = document.getElementById('btn-generate');
+                    const stopBtn = document.getElementById('btn-stop');
+                    const indicator = document.getElementById('loading-indicator');
+                    const loadText = document.getElementById('loading-text');
+                    isRunning = loading;
+                    if (loading) {
+                        btn.disabled = true;
+                        btn.classList.add('opacity-50', 'cursor-not-allowed');
+                        stopBtn.classList.remove('hidden');
+                        indicator.classList.remove('hidden');
+                        loadText.textContent = text;
+                    } else {
+                        btn.disabled = false;
+                        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                        stopBtn.classList.add('hidden');
+                        indicator.classList.add('hidden');
+                    }
+                }
 
-        function renderLeads(leads, append = false) {
-            const list = document.getElementById('lead-list');
-            if (!append) list.innerHTML = ''; // Start Fresh only if not appending
+                function renderLeads(leads, append = false) {
+                    const list = document.getElementById('lead-list');
+                    if (!append) list.innerHTML = ''; // Start Fresh only if not appending
 
-            if (leads.length === 0 && !append) {
-                list.innerHTML = `<div class="flex flex-col items-center justify-center py-20 text-gray-500 opacity-60"><i data-lucide="ghost" class="w-16 h-16 mb-4 stroke-[1]"></i><p class="text-lg font-medium">No leads found.</p></div>`;
-                lucide.createIcons();
-                return;
-            }
-            leads.forEach((lead, index) => {
-                const el = document.createElement('div');
-                // Use new Snap Animation Class with staggered delay in style
-                el.className = `p-5 rounded-xl glass-card flex items-start gap-4 group opacity-0 snap-fade-in`;
-                el.style.animationDelay = `${index * 0.05}s`;
+                    if (leads.length === 0 && !append) {
+                        list.innerHTML = `<div class="flex flex-col items-center justify-center py-20 text-gray-500 opacity-60"><i data-lucide="ghost" class="w-16 h-16 mb-4 stroke-[1]"></i><p class="text-lg font-medium">No leads found.</p></div>`;
+                        lucide.createIcons();
+                        return;
+                    }
+                    leads.forEach((lead, index) => {
+                        const el = document.createElement('div');
+                        // Use new Snap Animation Class with staggered delay in style
+                        el.className = `p-5 rounded-xl glass-card flex items-start gap-4 group opacity-0 snap-fade-in`;
+                        el.style.animationDelay = `${index * 0.05}s`;
 
-                // Add border or glow for high score
-                const isHot = (lead.score || 0) > 40;
-                if (isHot) el.classList.add('border-orange-500/30', 'bg-orange-900/10');
-                else el.classList.add('hover:bg-white/5');
+                        // Add border or glow for high score
+                        const isHot = (lead.score || 0) > 40;
+                        if (isHot) el.classList.add('border-orange-500/30', 'bg-orange-900/10');
+                        else el.classList.add('hover:bg-white/5');
 
-                // Score Badge
-                let scoreBadge = '';
-                const score = lead.score || 0;
-                if (score > 40) {
-                    scoreBadge = `<div class="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-orange-500/20 text-orange-300 border border-orange-500/30 uppercase tracking-wide">
+                        // Score Badge
+                        let scoreBadge = '';
+                        const score = lead.score || 0;
+                        if (score > 40) {
+                            scoreBadge = `<div class="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-orange-500/20 text-orange-300 border border-orange-500/30 uppercase tracking-wide">
                         <i data-lucide="flame" class="w-3 h-3 text-orange-400 fill-orange-400"></i> Hot (${score})
                     </div>`;
-                } else if (score > 10) {
-                    scoreBadge = `<div class="px-2 py-0.5 rounded text-[10px] font-medium bg-gray-800 text-gray-400 border border-gray-700">Activity: ${score}</div>`;
-                }
+                        } else if (score > 10) {
+                            scoreBadge = `<div class="px-2 py-0.5 rounded text-[10px] font-medium bg-gray-800 text-gray-400 border border-gray-700">Activity: ${score}</div>`;
+                        }
 
-                // Avatar Logic
-                const handle = lead.twitter_handle ? lead.twitter_handle.replace('@', '') : '';
-                const avatarUrl = lead.profile_image_url || (handle ? `https://unavatar.io/twitter/${handle}` : null);
-                const pfpUrl = avatarUrl || `https://ui-avatars.com/api/?name=${lead.project_name}&background=random&color=fff`;
+                        // Avatar Logic
+                        const handle = lead.twitter_handle ? lead.twitter_handle.replace('@', '') : '';
+                        const avatarUrl = lead.profile_image_url || (handle ? `https://unavatar.io/twitter/${handle}` : null);
+                        const pfpUrl = avatarUrl || `https://ui-avatars.com/api/?name=${lead.project_name}&background=random&color=fff`;
 
-                // Clean Description to ensure no codes
-                let desc = lead.description || "High-signal project detected.";
-                if (desc.includes('{') || desc.includes('tvl:')) {
-                    // It might still be raw for old items, try to clean
-                    desc = desc.replace(/{|}|"/g, '').replace(/,/g, ' • ');
-                }
+                        // Clean Description to ensure no codes
+                        let desc = lead.description || "High-signal project detected.";
+                        if (desc.includes('{') || desc.includes('tvl:')) {
+                            // It might still be raw for old items, try to clean
+                            desc = desc.replace(/{|}|"/g, '').replace(/,/g, ' • ');
+                        }
 
-                // Status Badge Logic (Restored)
-                let badgeClass = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-                let badgeText = 'NEW';
-                if (lead.status === 'processed' || lead.status === 'Qualified') {
-                    badgeClass = 'bg-blue-500/10 text-blue-400 border-blue-500/20';
-                    badgeText = 'ANALYZED';
-                } else if (lead.bucket === 'READY_TO_DM') {
-                    badgeClass = 'bg-green-500/10 text-green-400 border-green-500/20';
-                    badgeText = 'READY';
-                }
+                        // Status Badge Logic (Restored)
+                        let badgeClass = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+                        let badgeText = 'NEW';
+                        if (lead.status === 'processed' || lead.status === 'Qualified') {
+                            badgeClass = 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+                            badgeText = 'ANALYZED';
+                        } else if (lead.bucket === 'READY_TO_DM') {
+                            badgeClass = 'bg-green-500/10 text-green-400 border-green-500/20';
+                            badgeText = 'READY';
+                        }
 
-                el.innerHTML = `
+                        el.innerHTML = `
                     <div class="relative w-12 h-12 flex-shrink-0">
                         <img src="${pfpUrl}" alt="${lead.project_name}" 
                              class="w-full h-full rounded-lg object-cover border border-white/10 shadow-lg bg-surface"
@@ -640,42 +639,42 @@
                         </div>
                     </div>
                 `;
-                list.appendChild(el);
-            });
-            lucide.createIcons();
-        }
+                        list.appendChild(el);
+                    });
+                    lucide.createIcons();
+                }
 
-        function timeAgo(dateString) {
-            if (!dateString) return 'just now';
-            const date = new Date(dateString);
-            const seconds = Math.floor((new Date() - date) / 1000);
-            let interval = seconds / 31536000;
-            if (interval > 1) return Math.floor(interval) + "y ago";
-            interval = seconds / 2592000;
-            if (interval > 1) return Math.floor(interval) + "mo ago";
-            interval = seconds / 86400;
-            if (interval > 1) return Math.floor(interval) + "d ago";
-            interval = seconds / 3600;
-            if (interval > 1) return Math.floor(interval) + "h ago";
-            interval = seconds / 60;
-            if (interval > 1) return Math.floor(interval) + "m ago";
-            return Math.floor(seconds) + "s ago";
-        }
+                function timeAgo(dateString) {
+                    if (!dateString) return 'just now';
+                    const date = new Date(dateString);
+                    const seconds = Math.floor((new Date() - date) / 1000);
+                    let interval = seconds / 31536000;
+                    if (interval > 1) return Math.floor(interval) + "y ago";
+                    interval = seconds / 2592000;
+                    if (interval > 1) return Math.floor(interval) + "mo ago";
+                    interval = seconds / 86400;
+                    if (interval > 1) return Math.floor(interval) + "d ago";
+                    interval = seconds / 3600;
+                    if (interval > 1) return Math.floor(interval) + "h ago";
+                    interval = seconds / 60;
+                    if (interval > 1) return Math.floor(interval) + "m ago";
+                    return Math.floor(seconds) + "s ago";
+                }
 
-        function animateValue(id, start, end, duration) {
-            if (start === end) return;
-            const obj = document.getElementById(id);
-            if (!obj) return;
-            let startTimestamp = null;
-            const step = (timestamp) => {
-                if (!startTimestamp) startTimestamp = timestamp;
-                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-                obj.innerText = Math.floor(progress * (end - start) + start);
-                if (progress < 1) window.requestAnimationFrame(step);
-            };
-            window.requestAnimationFrame(step);
-        }
-    </script>
+                function animateValue(id, start, end, duration) {
+                    if (start === end) return;
+                    const obj = document.getElementById(id);
+                    if (!obj) return;
+                    let startTimestamp = null;
+                    const step = (timestamp) => {
+                        if (!startTimestamp) startTimestamp = timestamp;
+                        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                        obj.innerText = Math.floor(progress * (end - start) + start);
+                        if (progress < 1) window.requestAnimationFrame(step);
+                    };
+                    window.requestAnimationFrame(step);
+                }
+            </script>
 </body>
 
 </html>
