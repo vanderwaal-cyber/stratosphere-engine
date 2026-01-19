@@ -546,6 +546,17 @@
                     desc = desc.replace(/{|}|"/g, '').replace(/,/g, ' • ');
                 }
 
+                // Status Badge Logic (Restored)
+                let badgeClass = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+                let badgeText = 'NEW';
+                if (lead.status === 'processed' || lead.status === 'Qualified') {
+                    badgeClass = 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+                    badgeText = 'ANALYZED';
+                } else if (lead.bucket === 'READY_TO_DM') {
+                    badgeClass = 'bg-green-500/10 text-green-400 border-green-500/20';
+                    badgeText = 'READY';
+                }
+
                 el.innerHTML = `
                     <div class="relative w-12 h-12 flex-shrink-0">
                         <img src="${pfpUrl}" alt="${lead.project_name}" 
