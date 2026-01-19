@@ -32,8 +32,10 @@ class DeFiLlamaCollector(BaseCollector):
                 reverse=True
             )
             
-            # Take top 100 recent to increase "New Batch" probability
-            targets = new_protocols[:100]
+            # Take a random slice of the top 300 to ensure variety on each run
+            import random
+            start_index = random.randint(0, 50)
+            targets = new_protocols[start_index : start_index + 100]
             
             for p in targets:
                 # DeFiLlama usually provides website and twitter!
