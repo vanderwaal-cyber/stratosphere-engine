@@ -1,8 +1,46 @@
-import asyncio
-import time
-import uuid
-from datetime import datetime
-from sqlalchemy.orm import Session
+from datetime import datetime, timedelta, timedelta
+
+# ... (inside class)
+
+    async def _run_logic(self, mode):
+        db = SessionLocal()
+        try:
+            # 0. Auto-Cleanup (7 Days)
+            cutoff = datetime.utcnow() - timedelta(days=7)
+            deleted = db.query(Lead).filter(Lead.created_at < cutoff).delete()
+            if deleted > 0:
+                self.logger.info(f"Cleaned up {deleted} old leads.")
+                db.commit()
+
+            # 1. Collection
+            self.update_state(step="Collecting", progress=10)
+            # ...
+            
+            # ... Inside Ingestion Loop ...
+            # ...
+                    if exists:
+                        if mode == "refresh":
+                             leads_to_enrich.append(existing_lead)
+                        else:
+                             self.state["stats"]["duplicates_skipped"] += 1
+                        continue
+                        
+                    # It's New
+                    lead = Lead(...)
+                    # ...
+                    db.add(lead)
+                    db.commit()
+                    
+                    self.state["stats"]["new_added"] += 1
+                    leads_to_enrich.append(lead)
+                    
+                    # STOP if 100 new leads reached
+                    if self.state["stats"]["new_added"] >= 100:
+                        self.logger.info("Reached target of 100 new leads.")
+                        break
+                    
+                except Exception as e:
+                    self.logger.error(...)
 from sqlalchemy import desc
 from storage.database import SessionLocal
 from storage.models import Lead, LeadSource, RunLog
@@ -85,9 +123,16 @@ class StratosphereEngine:
              if self.stop_requested:
                  self.update_state("done", step="Stopped by user")
 
-    async def _run_logic(self):
+    async def _run_logic(self, mode):
         db = SessionLocal()
         try:
+            # 0. Auto-Cleanup (> 7 Days)
+            cutoff = datetime.utcnow() - timedelta(days=7)
+            deleted = db.query(Lead).filter(Lead.created_at < cutoff).delete()
+            if deleted:
+                self.logger.info(f"Cleaned up {deleted} old leads")
+                db.commit()
+
             # 1. Collection
             self.update_state(step="Collecting", progress=10)
             collectors = [
@@ -104,6 +149,7 @@ class StratosphereEngine:
                 raw_leads.extend(leads)
                 self.update_state(discovered=len(raw_leads))
                 
+            self.state["stats"]["total_scraped"] = len(raw_leads)
             self.update_state(discovered=len(raw_leads))
                 
             if self.stop_requested: return
@@ -111,11 +157,15 @@ class StratosphereEngine:
             self.update_state(step="Ingesting", progress=30)
             
             # 2. Ingestion & Dedup
-            new_count = 0
-            seen_domains = set()
-            seen_handles = set()
-            
+            leads_to_enrich = [] 
+            seen_in_batch_domains = set()
+            seen_in_batch_handles = set()
+
             for raw in raw_leads:
+                # Stop if we hit 100 NEW leads
+                if self.state["stats"]["new_added"] >= 100:
+                    break
+
                 try:
                     # Normalization
                     norm_domain = None
@@ -128,20 +178,32 @@ class StratosphereEngine:
                         norm_handle = raw.twitter_handle.lower().replace("@", "").strip()
                         if "twitter.com/" in norm_handle: norm_handle = norm_handle.split("/")[-1]
                     
-                    # 1. In-Batch Dedup
-                    if norm_domain and norm_domain in seen_domains: continue
-                    if norm_handle and norm_handle in seen_handles: continue
-                    
-                    if norm_domain: seen_domains.add(norm_domain)
-                    if norm_handle: seen_handles.add(norm_handle)
+                    # Batch Dedup
+                    if norm_domain and norm_domain in seen_in_batch_domains: 
+                        self.state["stats"]["duplicates_skipped"] += 1
+                        continue
+                    if norm_handle and norm_handle in seen_in_batch_handles: 
+                        self.state["stats"]["duplicates_skipped"] += 1
+                        continue
 
-                    # 2. Database Dedup (Check if exists)
-                    exists = False
-                    if norm_domain and db.query(Lead).filter(Lead.normalized_domain == norm_domain).first(): exists = True
-                    if not exists and norm_handle and db.query(Lead).filter(Lead.normalized_handle == norm_handle).first(): exists = True
-                            
-                    if exists: continue
+                    if norm_domain: seen_in_batch_domains.add(norm_domain)
+                    if norm_handle: seen_in_batch_handles.add(norm_handle)
+
+                    # Database Dedup
+                    existing_lead = None
+                    if norm_handle:
+                        existing_lead = db.query(Lead).filter(Lead.normalized_handle == norm_handle).first()
+                    if not existing_lead and norm_domain:
+                        existing_lead = db.query(Lead).filter(Lead.normalized_domain == norm_domain).first()
+
+                    if existing_lead:
+                        if mode == "refresh":
+                            leads_to_enrich.append(existing_lead)
+                        else:
+                            self.state["stats"]["duplicates_skipped"] += 1
+                        continue
                         
+                    # It's New
                     lead = Lead(
                         project_name=raw.name,
                         domain=raw.website,
@@ -150,17 +212,22 @@ class StratosphereEngine:
                         normalized_handle=norm_handle,
                         status="New",
                         description=str(raw.extra_data),
-                        source_counts=1
+                        source_counts=1,
+                        created_at=datetime.utcnow()
                     )
                     if raw.extra_data and "funding" in raw.extra_data: lead.funding_info = raw.extra_data["funding"]
                     
                     source = LeadSource(source_name=raw.source, source_url=raw.website)
                     lead.sources.append(source)
                     db.add(lead)
-                    new_count += 1
+                    db.commit() # Commit to get ID
+                    
+                    self.state["stats"]["new_added"] += 1
+                    leads_to_enrich.append(lead)
                     
                 except Exception as e:
                     self.logger.error(f"Ingestion failed for {raw.name if raw else 'Unknown'}: {e}")
+                    self.state["stats"]["failed_ingestion"] += 1
             
             try:
                 db.commit()
