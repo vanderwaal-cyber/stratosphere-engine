@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from storage.database import SessionLocal
 from storage.models import Lead, LeadSource, RunLog
 from collectors.x_keywords import XKeywordCollector
+from collectors.x_api import XApiCollector
 from collectors.defillama import DeFiLlamaCollector
 from collectors.search import UniversalSearchCollector
 from collectors.github import GithubCollector
@@ -101,6 +102,7 @@ class StratosphereEngine:
             collectors = [
                 CoinMarketCapCollector(),  # PRIMARY VOLUME
                 ICOCalendarCollector(),    # UPCOMING LAUNCHES
+                XApiCollector(),           # LIVE SOCIALS
                 DeFiLlamaCollector(),      # QUALITY DeFi
                 CoinGeckoCollector(),      # FALLBACK VOLUME
                 # UniversalSearchCollector(), # Search - Supplemental

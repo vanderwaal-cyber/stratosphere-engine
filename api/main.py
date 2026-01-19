@@ -284,10 +284,21 @@ async def read_stats(db: Session = Depends(get_db)):
     total = db.query(LeadModel).count()
     ready = db.query(LeadModel).filter(LeadModel.bucket == "READY_TO_DM").count()
     alt = db.query(LeadModel).filter(LeadModel.bucket == "NEEDS_ALT_OUTREACH").count()
+    
+    # New Metrics
+    telegram_count = db.query(LeadModel).filter((LeadModel.telegram_channel != None) | (LeadModel.telegram_url != None)).count()
+    
+    # Source Breakdown
+    from sqlalchemy import func
+    sources_query = db.query(LeadModel.source, func.count(LeadModel.source)).group_by(LeadModel.source).all()
+    sources = {s: c for s, c in sources_query}
+    
     return {
         "total_leads": total,
         "ready_to_dm": ready,
-        "needs_alt_outreach": alt
+        "needs_alt_outreach": alt,
+        "telegram_leads": telegram_count,
+        "sources": sources
     }
 
 from fastapi.responses import StreamingResponse

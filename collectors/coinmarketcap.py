@@ -33,7 +33,7 @@ class CoinMarketCapCollector(BaseCollector):
                     headers=self.get_headers(),
                     params={
                         "start": "1",
-                        "limit": "200",
+                        "limit": "5000",
                         "sort": "date_added",
                         "sort_dir": "desc",
                         "aux": "date_added,tags,platform"

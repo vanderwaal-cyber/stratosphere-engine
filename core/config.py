@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     TELEGRAM_BOT_TOKEN: str = ""
     CMC_API_KEY: str = ""
+    X_BEARER_TOKEN: str = ""
+    X_BEARER_TOKEN: str = ""
     
     model_config = {
         "env_file": ".env",
