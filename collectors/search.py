@@ -16,50 +16,44 @@ class UniversalSearchCollector(BaseCollector):
             "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
         ]
         
-        # KEYWORD PERMUTATION ENGINE
-        # We combine these to form thousands of queries
-        self.niches = [
-            "crypto", "defi", "web3", "memecoin", "nft", "dao", "L2", "zk", "ai agent", "depin", "rwa"
-        ]
+        # KEYWORD PERMUTATION ENGINE - EXPANDED
+        self.ecosystems = ["solana", "ethereum", "base chain", "arbitrum", "monad", "berachain", "blast", "optimism", "zkSync", "sui", "sei", "aptos"]
+        self.niches = ["defi", "web3", "memecoin", "nft", "dao", "L2", "zk", "ai agent", "depin", "rwa", "gaming", "socialfi", "perp dex", "lending"]
+        self.types = ["protocol", "labs", "finance", "exchange", "swap", "network", "foundation", "app", "game", "infra", "studio"]
+        self.actions = ["waitlist", "early access", "launching soon", "airdrop confirmed", "testnet live", "beta signup", "presale", "whitelist"]
         
-        self.types = [
-            "protocol", "labs", "finance", "exchange", "swap", "network", "foundation", "app", "game"
-        ]
-        
-        self.actions = [
-            "waitlist", "early access", "launching soon", "airdrop confirmed", "testnet live", "beta signup"
-        ]
-        
-        self.modifiers = [
-            "site:twitter.com",
-            "site:x.com"
-        ]
+        self.modifiers = ["site:twitter.com", "site:x.com"]
 
     async def collect(self) -> List[RawLead]:
         leads = []
         try:
-            # Generate 8 random query permutations per run
-            queries = []
-            for _ in range(8):
+            # Generate 50 unique queries per batch run to ensure volume
+            queries = set()
+            while len(queries) < 50:
+                eco = random.choice(self.ecosystems) if random.random() > 0.5 else ""
                 niche = random.choice(self.niches)
                 typ = random.choice(self.types)
                 action = random.choice(self.actions)
                 
-                # Format: "defi protocol waitlist site:twitter.com"
-                q = f"{niche} {typ} {action}"
-                if random.random() > 0.3: # 70% chance to force Twitter site search
-                    q += " " + random.choice(self.modifiers)
-                queries.append(q)
-            
-            for q in queries:
-                self.logger.info(f"🔎 Deep Search: '{q}'")
+                # Permutation: "solana defi protocol waitlist"
+                parts = [p for p in [eco, niche, typ, action] if p]
+                q = " ".join(parts)
                 
-                # We scrape 1-3 pages deep per query
+                if random.random() > 0.4: # 60% chance to force Twitter site search for high relevance
+                    q += " " + random.choice(self.modifiers)
+                queries.add(q)
+            
+            queries = list(queries)
+            
+            for i, q in enumerate(queries):
+                self.logger.info(f"🔎 Deep Search ({i+1}/50): '{q}'")
+                
+                # Scrape 2 pages deep per query
                 current_url = f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(q)}&kl=us-en"
                 
-                for page_num in range(1, 4):
-                    # Rate limit jitter
-                    await asyncio.sleep(random.uniform(2.5, 5.0))
+                for page_num in range(1, 3):
+                    # Rate limit jitter (Reduced slightly for speed, but safe)
+                    await asyncio.sleep(random.uniform(1.5, 3.0))
                     
                     html = await self.fetch_page(current_url)
                     if not html or "No results" in html: break
@@ -75,34 +69,23 @@ class UniversalSearchCollector(BaseCollector):
                         title = title_tag.get_text(strip=True)
                         link = title_tag.get('href', '')
                         
-                        # 1. Verification: MUST be a Twitter/X link if looking for handle
+                        # Verification: Twitter/X OR Project Site
                         handle = None
                         if "twitter.com" in link or "x.com" in link:
                              m = re.search(r'(?:twitter\.com|x\.com)/([a-zA-Z0-9_]+)', link)
                              if m: 
                                  handle = m.group(1)
-                                 if handle.lower() in ['search', 'home', 'explore', 'notifications']: continue # Skip system pages
-                        
-                        # 2. Heuristics for non-twitter links (project sites)
-                        # Only accept if description contains strong keywords
-                        
-                        if not handle and "http" in link:
-                             # We only want High Confidence leads now.
-                             # If it's a random site, we might skip unless title is very clear
-                             pass
+                                 if handle.lower() in ['search', 'home', 'explore', 'notifications', 'hashtag', 'status']: continue 
                         
                         if handle:
                             # Clean Name
                             name = handle
-                            # Try to get nicer name from title "Project Name (@handle) on X"
-                            if "(" in title: 
-                                name = title.split("(")[0].strip()
-                            elif " on Twitter" in title:
-                                name = title.split(" on Twitter")[0].strip()
+                            if "(" in title: name = title.split("(")[0].strip()
+                            elif " on " in title: name = title.split(" on ")[0].strip()
                                 
                             leads.append(RawLead(
                                 name=name,
-                                source=f"deep_search_q_{q.replace(' ', '_')[:10]}",
+                                source=f"deep_search",
                                 website=link,
                                 twitter_handle=handle,
                                 extra_data={"query": q, "title": title}
@@ -118,6 +101,8 @@ class UniversalSearchCollector(BaseCollector):
                     current_url = f"https://html.duckduckgo.com/html/?{urllib.parse.urlencode(params)}"
                     
                     if page_found == 0: break
+            
+            self.logger.info(f"✅ Batch Complete. Found {len(leads)} raw leads.")
                     
         except Exception as e:
             self.logger.error(f"Deep Search Error: {e}")
