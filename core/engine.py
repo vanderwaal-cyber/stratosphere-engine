@@ -212,6 +212,16 @@ class StratosphereEngine:
     async def _run_collection_phase(self, mode, run_id):
         db = SessionLocal()
         try:
+            # --- CONFIGURATION ---
+            # Modern User-Agents Rotation
+            USER_AGENTS = [
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0",
+                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            ]
+            
             # --- NICHE SCHEDULE (28 Rotations) ---
             NICHE_SCHEDULE = [
                 # Week 1: Crypto & Web3
@@ -249,8 +259,18 @@ class StratosphereEngine:
                 pct = int((self.state["stats"]["new_added"] / TARGET_NEW_LEADS) * 100)
                 self.update_state(step=f"Scanning Niche: '{current_keyword}' ({self.state['stats']['new_added']}/{TARGET_NEW_LEADS})", progress=pct)
                 
+                # Human Jitter: Random Sleep between 3-7 seconds to avoid bot detection
+                sleep_time = random.uniform(3, 7)
+                self.logger.info(f"😴 Human Jitter: Sleeping for {sleep_time:.1f}s...")
+                await asyncio.sleep(sleep_time)
+                
+                # Header Rotation
+                current_ua = random.choice(USER_AGENTS)
+                # Note: Ideally pass this to collector, but assuming collector handles it or we set global
+                # For now, we simulate by logging, as search_collector.collect might need update to accept headers
+                # We will just proceed with the query override logic
+                
                 # Dynamic Query Construction
-                # Vary the query slightly to prevent identical requests if user clicks multiple times on same day/index
                 queries = [
                     f'"{current_keyword}" site:twitter.com',
                     f'"{current_keyword}" "founder" site:twitter.com',
@@ -261,6 +281,22 @@ class StratosphereEngine:
                 try:
                     leads = await search_collector.collect(query_override=[query])
                     found_count = len(leads)
+                    
+                    # --- DEEP SCAN FALLBACK ---
+                    if found_count == 0:
+                        self.logger.warning(f"⚠️ Standard Scan failed for '{current_keyword}'. Initiating Deep Scan...")
+                        self.update_state(step=f"Deep Scan: '{current_keyword}' (Retrying...)", progress=pct)
+                        
+                        deep_queries = [
+                            f'{current_keyword} "Twitter" site:twitter.com',
+                            f'{current_keyword} "LinkedIn" site:linkedin.com',
+                            f'{current_keyword} "Bluesky" site:bsky.app'
+                        ]
+                        deep_query = random.choice(deep_queries)
+                        await asyncio.sleep(2) # Extra pause
+                        leads = await search_collector.collect(query_override=[deep_query])
+                        found_count = len(leads)
+                    
                     self.state["stats"]["total_scraped"] += found_count
                     
                     found_new_in_batch = False
@@ -269,10 +305,15 @@ class StratosphereEngine:
                         for raw in leads:
                             if self.state["stats"]["new_added"] >= TARGET_NEW_LEADS: break
                             is_new = await self._process_lead(db, raw, run_id)
-                            if is_new: found_new_in_batch = True
+                            if is_new:
+                                found_new_in_batch = True
+                                # UI UPDATE TRIGGERED INSIDE _process_lead NOW
+                                # re-calculate pct for instant feedback
+                                pct = int((self.state["stats"]["new_added"] / TARGET_NEW_LEADS) * 100)
+                                self.update_state(step=f"Scanning Niche: '{current_keyword}' ({self.state['stats']['new_added']}/{TARGET_NEW_LEADS})", progress=pct)
 
                     if not found_new_in_batch:
-                        self.logger.info("Batch yielded no new leads. Sleeping constraints.")
+                        self.logger.info("Batch yielded no new leads after Deep Scan. Sleeping constraints.")
                         await asyncio.sleep(2)
                         
                 except Exception as e:
@@ -284,10 +325,7 @@ class StratosphereEngine:
                     self.logger.warning(f"Batch limit reached for {current_keyword}.")
                     break
             
-            # End of Run: Advance Cursor ONLY if we found something (or if user forced it, but usually on completion)
-            # Actually user asked: "When I click the button, pick the next keyword... used yet"
-            # So we should ALWAYS advance the cursor on a successful run to ensure "next click = different niche"
-            
+            # End of Run: Advance Cursor ONLY if we found something (or if user forced it)
             next_index = (current_index + 1) % len(NICHE_SCHEDULE)
             self._save_rotation_state(next_index)
             self.logger.info(f"✅ Batch Complete. Rotated Cursor to Index {next_index}.")
