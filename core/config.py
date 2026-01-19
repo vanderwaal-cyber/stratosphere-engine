@@ -1,0 +1,31 @@
+import os
+from pydantic_settings import BaseSettings
+from functools import lru_cache
+
+class Settings(BaseSettings):
+    PROJECT_NAME: str = "Stratosphere Lead Engine"
+    VERSION: str = "1.0.0"
+    
+    # Storage
+    BASE_DIR: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # Default to SQLite for local, but prioritize Env Var for prod
+    DATABASE_URL: str = os.getenv("DATABASE_URL", f"sqlite:///{os.path.join(BASE_DIR, 'stratosphere.db')}")
+    
+    # Collection limits
+    MAX_CONCURRENT_REQUESTS: int = 5
+    COLLECTOR_TIMEOUT_SECONDS: int = 15
+    DAILY_LEAD_TARGET: int = 1000
+    
+    # Outreach
+    COOLDOWN_DAYS: int = 30
+    
+    # API Keys (Optional with defaults/fallbacks logic in code)
+    OPENAI_API_KEY: str = ""
+    TELEGRAM_BOT_TOKEN: str = ""
+    
+    class Config:
+        env_file = ".env"
+
+@lru_cache()
+def get_settings():
+    return Settings()

@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+pydantic-settings
+requests
+httpx
+beautifulsoup4
+lxml
+playwright
+python-dotenv
+pandas
+tenacity
+psycopg2-binary
+gunicorn
+slowapi
