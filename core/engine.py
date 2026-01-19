@@ -48,17 +48,14 @@ class LeadBatchGenerator:
         found_count = 0
         duplicate_streak = 0
         db: Session = SessionLocal()
+        loop = asyncio.new_event_loop()
         try:
             collector = XKeywordCollector()
+            asyncio.set_event_loop(loop)
             while found_count < self.batch_size:
                 keyword, location = self.current_search_params()
-                loop = asyncio.new_event_loop()
-                try:
-                    asyncio.set_event_loop(loop)
-                    candidates = loop.run_until_complete(collector.run())
-                finally:
-                    asyncio.set_event_loop(None)
-                    loop.close()
+                candidates = loop.run_until_complete(collector.collect_profiles(keyword=keyword, location=location))
+                round_added = 0
                 for c in candidates:
                     get_val = c.get if isinstance(c, dict) else lambda k: getattr(c, k, None)
 
@@ -96,6 +93,9 @@ class LeadBatchGenerator:
                         normalized_domain=norm_domain,
                         twitter_handle=f"@{norm_handle}" if norm_handle else None,
                         normalized_handle=norm_handle,
+                        profile_image_url=get_val("profile_image_url")
+                        or (norm_handle and f"https://unavatar.io/twitter/{norm_handle}")
+                        or f"https://ui-avatars.com/api/?name={urllib.parse.quote(project_name)}&background=random&color=fff",
                         status="New",
                         description=str(c)[:500],
                         source_counts=1,
@@ -107,10 +107,16 @@ class LeadBatchGenerator:
                     db.refresh(lead)
                     new_leads.append(lead)
                     found_count += 1
+                    round_added += 1
                     duplicate_streak = 0
                     if found_count >= self.batch_size:
                         break
+                if round_added == 0:
+                    # No progress this round, rotate queries to avoid stalls
+                    self.rotate_search()
         finally:
+            asyncio.set_event_loop(None)
+            loop.close()
             db.close()
         return new_leads  # Each Lead here includes profile_image_url
 
@@ -193,9 +199,8 @@ class StratosphereEngine:
                 DeFiLlamaCollector(),
                 XKeywordCollector(),
             ]
-            
-            target_leads = 1000 
-            max_loops = 50 
+            target_leads = 50 
+            max_loops = 200 
             
             while self.state["stats"]["new_added"] < target_leads and self.state["stats"]["loops"] < max_loops:
                 if self.stop_requested: break
@@ -277,6 +282,9 @@ class StratosphereEngine:
                 normalized_domain=norm_domain,
                 twitter_handle=f"@{norm_handle}" if norm_handle else None,
                 normalized_handle=norm_handle,
+                profile_image_url=raw.profile_image_url
+                or (norm_handle and f"https://unavatar.io/twitter/{norm_handle}")
+                or f"https://ui-avatars.com/api/?name={urllib.parse.quote(raw.name)}&background=random&color=fff",
                 status="New",
                 description=str(raw.extra_data)[:500],
                 source_counts=1,

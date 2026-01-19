@@ -31,12 +31,14 @@ async def startup_db():
         try:
             # 1. Try Postgres (Ideal for Prod)
             conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS run_id VARCHAR"))
+            conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS profile_image_url VARCHAR"))
             conn.commit()
             print("Migration (Postgres) success.")
         except Exception:
             try:
                 # 2. Try SQLite (Local) - No IF NOT EXISTS
                 conn.execute(text("ALTER TABLE leads ADD COLUMN run_id VARCHAR"))
+                conn.execute(text("ALTER TABLE leads ADD COLUMN profile_image_url VARCHAR"))
                 conn.commit()
                 print("Migration (SQLite) success.")
             except Exception as e:
@@ -55,6 +57,7 @@ class LeadBase(BaseModel):
     score: int
     bucket: Optional[str] = None
     source_counts: int = 1
+    profile_image_url: Optional[str] = None
     telegram_url: Optional[str] = None
     discord_url: Optional[str] = None
     email: Optional[str] = None
