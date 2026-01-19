@@ -16,6 +16,28 @@ class XKeywordCollector(BaseCollector):
             '"mainnet launch" protocol incentivized'
         ]
 
+    async def collect_profiles(self, keyword: str = "", location: str = "") -> List[RawLead]:
+        """
+        Run a focused scrape based on provided keyword/location.
+        Falls back to default queries if nothing provided.
+        """
+        custom_queries = []
+        if keyword:
+            base_q = f'"{keyword}" site:x.com'
+            if location:
+                base_q += f' "{location}"'
+            custom_queries.append(base_q)
+            custom_queries.append(f'site:x.com "{keyword}" "{location}" "founder"')
+        if not custom_queries:
+            custom_queries = self.queries
+
+        original = self.queries
+        self.queries = custom_queries
+        try:
+            return await self.collect()
+        finally:
+            self.queries = original
+
     async def collect(self) -> List[RawLead]:
         leads = []
         for q in self.queries:
@@ -50,7 +72,8 @@ class XKeywordCollector(BaseCollector):
                     lead = RawLead(
                         name=name,
                         source="x_signal_search",
-                        extra_data={"query": q, "context": title, "activity_score": score}
+                        profile_image_url=None,
+                        extra_data={"query": q, "context": title}
                     )
                     
                     if "mirror.xyz" in link or "medium.com" in link:
@@ -58,7 +81,13 @@ class XKeywordCollector(BaseCollector):
                     elif "twitter.com" in link or "x.com" in link:
                         # Extract handle if direct link
                         m = re.search(r'(?:twitter\.com|x\.com)/([a-zA-Z0-9_]+)', link)
-                        if m: lead.twitter_handle = m.group(1)
+                        if m:
+                            lead.twitter_handle = m.group(1)
+                            lead.profile_image_url = f"https://unavatar.io/twitter/{lead.twitter_handle}"
+                    
+                    # Fallback avatar using initials to avoid blank UI slots
+                    if not lead.profile_image_url:
+                        lead.profile_image_url = f"https://ui-avatars.com/api/?name={urllib.parse.quote(name)}&background=random&color=fff"
                     
                     if lead.name and len(lead.name) > 2:
                         leads.append(lead)

@@ -18,6 +18,7 @@ class Lead(Base):
     
     # Contacts (Raw)
     domain = Column(String, nullable=True)
+    profile_image_url = Column(String, nullable=True)
     twitter_handle = Column(String, index=True, nullable=True)
     
     # Status

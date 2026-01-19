@@ -117,7 +117,8 @@
                     </div>
                     <img id="logo-img" src="/assets/brand_logo.jpg" alt="Stratosphere"
                         class="relative w-32 h-32 rounded-2xl border-4 border-background shadow-2xl object-cover bg-background">
-                    <div class="absolute bottom-2 right-2 w-4 h-4 rounded-full bg-emerald-500 border-2 border-background animate-pulse"
+                    <div id="status-indicator"
+                        class="absolute bottom-2 right-2 w-4 h-4 rounded-full bg-emerald-500 border-2 border-background animate-pulse"
                         title="System Active"></div>
                 </div>
 
@@ -359,6 +360,7 @@
             try {
                 const res = await fetch(`${API_URL}/pipeline/status`);
                 const state = await res.json();
+                renderStatus(state);
 
                 const bar = document.getElementById('progress-bar');
                 const container = document.getElementById('progress-container');
@@ -394,6 +396,43 @@
             } catch (e) {
                 console.error("Poll Error", e);
             }
+        }
+
+        function renderStatus(state) {
+            const statusEl = document.getElementById('status-text');
+            const indicator = document.getElementById('status-indicator');
+            if (!statusEl || !indicator) return;
+
+            let text = "Idle";
+            let colorClass = "text-gray-400";
+            let dotClass = "bg-gray-500";
+
+            switch (state.state) {
+                case "running":
+                    text = state.current_step || "Running";
+                    colorClass = "text-emerald-400";
+                    dotClass = "bg-emerald-500";
+                    break;
+                case "error":
+                    text = state.current_step || "Error";
+                    colorClass = "text-red-400";
+                    dotClass = "bg-red-500";
+                    break;
+                case "done":
+                    text = "Complete";
+                    colorClass = "text-emerald-300";
+                    dotClass = "bg-emerald-400";
+                    break;
+                case "stopping":
+                    text = "Stopping...";
+                    colorClass = "text-amber-300";
+                    dotClass = "bg-amber-400";
+                    break;
+            }
+
+            statusEl.textContent = text;
+            statusEl.className = `font-medium ${colorClass}`;
+            indicator.className = `absolute bottom-2 right-2 w-4 h-4 rounded-full border-2 border-background animate-pulse ${dotClass}`;
         }
 
         async function fetchData() {
@@ -481,8 +520,16 @@
 
                 // Avatar Logic
                 const handle = lead.twitter_handle ? lead.twitter_handle.replace('@', '') : '';
-                const avatarUrl = handle ? `https://unavatar.io/twitter/${handle}` : null;
-                const pfpUrl = avatarUrl || `https://ui-avatars.com/api/?name=${lead.project_name}&background=random&color=fff`;
+                const avatarUrl = lead.profile_image_url || (handle ? `https://unavatar.io/twitter/${handle}` : null);
+                const avatarHtml = avatarUrl
+                    ? `<img src="${avatarUrl}" onerror="this.onerror=null;this.src='https://ui-avatars.com/api/?name=${lead.project_name}&background=random&color=fff'" class="w-12 h-12 rounded-full object-cover border border-white/10 shadow-sm">`
+                    : `<div class="w-12 h-12 rounded-full bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center border border-white/10 text-sm font-bold">${lead.project_name.substring(0, 2).toUpperCase()}</div>`;
+
+                // Clean Description
+                let desc = lead.description || "No info available.";
+                if (desc.startsWith('{') || desc.includes('query:')) {
+                    desc = "Discovered via high-signal keywords."; // Hide debug JSON
+                }
 
                 el.innerHTML = `
                     <div class="relative w-12 h-12 flex-shrink-0">

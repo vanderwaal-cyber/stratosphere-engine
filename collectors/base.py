@@ -16,6 +16,7 @@ class RawLead:
     source: str
     website: Optional[str] = None
     twitter_handle: Optional[str] = None
+    profile_image_url: Optional[str] = None
     extra_data: Dict[str, Any] = field(default_factory=dict)
     
     def to_dict(self):
@@ -24,6 +25,7 @@ class RawLead:
             "source": self.source,
             "website": self.website,
             "twitter_handle": self.twitter_handle,
+            "profile_image_url": self.profile_image_url,
             "extra_data": self.extra_data
         }
 
