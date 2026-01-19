@@ -207,6 +207,9 @@ class StratosphereEngine:
             target_leads = 100 # Increased target as we have more sources
             max_loops = 100 
             
+            # STARTUP: Backfill existing leads
+            await self._backfill_enrichment(db)
+            
             while self.state["stats"]["new_added"] < target_leads and self.state["stats"]["loops"] < max_loops:
                 if self.stop_requested: break
                 
@@ -317,6 +320,16 @@ class StratosphereEngine:
                 self.state["stats"]["duplicates_skipped"] += 1
                 return False
                 
+            # Format Description nicely
+            desc_text = raw.extra_data.get("desc")
+            if not desc_text:
+                # Format extra_data into string
+                parts = []
+                for k, v in raw.extra_data.items():
+                    if k in ['id', 'chainK', 'symbol', 'gecko_id']: continue
+                    parts.append(f"{k.capitalize()}: {v}")
+                desc_text = ", ".join(parts) if parts else "High-signal project."
+
             # Create NEW Verified Lead
             lead = Lead(
                 project_name=raw.name[:100],
@@ -328,7 +341,7 @@ class StratosphereEngine:
                 or (norm_handle and f"https://unavatar.io/twitter/{norm_handle}")
                 or f"https://ui-avatars.com/api/?name={urllib.parse.quote(raw.name)}&background=random&color=fff",
                 status="New",
-                description=str(raw.extra_data)[:500],
+                description=str(desc_text)[:500],
                 score=raw.extra_data.get('activity_score', 0),
                 source_counts=1,
                 created_at=datetime.utcnow(),
@@ -357,7 +370,17 @@ class StratosphereEngine:
             self.state["stats"]["failed_ingestion"] += 1
             return False
 
-    def log_run(self, db, component, level, message):
+    async def _backfill_enrichment(self, db):
+        """Processes any 'New' leads that might have been missed."""
+        from enrichment.pipeline import EnrichmentPipeline
+        pipeline = EnrichmentPipeline(db)
+        
+        pending = db.query(Lead).filter(Lead.status == "New").limit(50).all()
+        if pending:
+             self.logger.info(f"🔄 Backfilling Enrichment for {len(pending)} leads...")
+             for p in pending:
+                 await pipeline.process_lead(p)
+             db.commit()
         try:
             log = RunLog(component=component, level=level, message=message)
             db.add(log)

@@ -539,25 +539,18 @@
                 const avatarUrl = lead.profile_image_url || (handle ? `https://unavatar.io/twitter/${handle}` : null);
                 const pfpUrl = avatarUrl || `https://ui-avatars.com/api/?name=${lead.project_name}&background=random&color=fff`;
 
-                // Clean Description
-                let desc = lead.description || "No info available.";
-                if (desc.startsWith('{') || desc.includes('query:')) {
-                    desc = "Discovered via high-signal keywords."; // Hide debug JSON
-                }
-
-                // Status Badge Logic
-                let badgeClass = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-                let badgeText = 'NEW';
-                if (lead.status === 'processed') {
-                    badgeClass = 'bg-blue-500/10 text-blue-400 border-blue-500/20';
-                    badgeText = 'ANALYZED';
+                // Clean Description to ensure no codes
+                let desc = lead.description || "High-signal project detected.";
+                if (desc.includes('{') || desc.includes('tvl:')) {
+                    // It might still be raw for old items, try to clean
+                    desc = desc.replace(/{|}|"/g, '').replace(/,/g, ' • ');
                 }
 
                 el.innerHTML = `
                     <div class="relative w-12 h-12 flex-shrink-0">
                         <img src="${pfpUrl}" alt="${lead.project_name}" 
                              class="w-full h-full rounded-lg object-cover border border-white/10 shadow-lg bg-surface"
-                             onerror="this.src='https://ui-avatars.com/api/?name=${lead.project_name}&background=random&color=fff'">
+                             onerror="this.onerror=null; this.src='https://avatar.vercel.sh/${lead.project_name}'">
                         ${lead.platform === 'x' ? '<div class="absolute -bottom-1 -right-1 w-5 h-5 bg-black rounded-full flex items-center justify-center border border-gray-800"><i data-lucide="twitter" class="w-3 h-3 text-white"></i></div>' : ''}
                     </div>
                     
@@ -569,18 +562,14 @@
                                 <span class="${badgeClass} px-2 py-0.5 rounded text-[10px] font-medium border uppercase tracking-wider">${badgeText}</span>
                             </div>
                         </div>
-                        <p class="text-xs text-gray-400 line-clamp-2 leading-relaxed mb-3">${lead.description || "High-signal project detected."}</p>
+                        <p class="text-xs text-gray-400 line-clamp-2 leading-relaxed mb-3 font-mono opacity-80">${desc}</p>
                         
-                        <div class="flex items-center gap-3 text-[11px] text-gray-500 font-medium">
-                            ${lead.twitter_handle ? `<a href="https://twitter.com/${lead.twitter_handle.replace('@', '')}" target="_blank" class="flex items-center gap-1 hover:text-white transition-colors"><i data-lucide="twitter" class="w-3 h-3"></i> ${lead.twitter_handle}</a>` : ''}
-                            ${lead.domain ? `<a href="${lead.domain}" target="_blank" class="flex items-center gap-1 hover:text-white transition-colors truncate max-w-[150px]"><i data-lucide="link" class="w-3 h-3"></i> ${lead.domain.replace('https://', '')}</a>` : ''}
-                            <span class="ml-auto opacity-50 flex items-center gap-1"><i data-lucide="clock" class="w-3 h-3"></i> ${timeAgo(lead.created_at)}</span>
+                        <div class="flex items-center gap-2 mt-2">
+                             ${lead.domain ? `<a href="${lead.domain}" target="_blank" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-medium text-white transition-colors flex items-center gap-1.5"><i data-lucide="globe" class="w-3 h-3"></i> Website</a>` : ''}
+                             ${lead.twitter_handle ? `<a href="https://twitter.com/${lead.twitter_handle.replace('@', '')}" target="_blank" class="px-3 py-1.5 rounded-lg bg-[#1DA1F2]/10 hover:bg-[#1DA1F2]/20 text-[#1DA1F2] transition-colors text-xs font-medium flex items-center gap-1.5"><i data-lucide="twitter" class="w-3 h-3"></i> Twitter</a>` : ''}
+                             <span class="ml-auto opacity-40 text-[10px] flex items-center gap-1"><i data-lucide="clock" class="w-3 h-3"></i> ${timeAgo(lead.created_at)}</span>
                         </div>
                     </div>
-                    
-                    <button class="absolute top-5 right-5 p-2 rounded-lg bg-white/5 hover:bg-white text-gray-400 hover:text-black transition-all text-xs font-semibold opacity-0 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0" onclick="window.open('https://twitter.com/${handle}', '_blank')">
-                        Open on X <i data-lucide="external-link" class="w-3 h-3 inline ml-0.5"></i>
-                    </button>
                 `;
                 list.appendChild(el);
             });
