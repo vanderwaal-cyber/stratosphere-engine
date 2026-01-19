@@ -50,76 +50,92 @@ class UniversalSearchCollector(BaseCollector):
     async def collect(self) -> List[RawLead]:
         leads = []
         try:
-            # Pick 3 random queries to ensure variety each run
-            chosen_queries = random.sample(self.base_queries, 3)
+            # Pick 5 random queries (Increased from 3)
+            chosen_queries = random.sample(self.base_queries, 5)
             
             for q in chosen_queries:
                 # 50% chance to add a site modifier for specificity
                 if random.random() > 0.5:
                     q += " " + random.choice(self.modifiers)
                     
-                self.logger.info(f"🔎 Creating Universal Search for: '{q}'")
+                self.logger.info(f"🔎 Universal Search: '{q}' (Pagination: ON)")
                 
-                # DuckDuckGo HTML (Lite)
-                # Random delay to be polite
-                await asyncio.sleep(random.uniform(1.0, 3.0))
+                # Pagination Loop (5 Pages Depth)
+                current_url = f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(q)}&kl=us-en"
                 
-                encoded = urllib.parse.quote(q)
-                url = f"https://html.duckduckgo.com/html/?q={encoded}&kl=us-en"
-                
-                # Manual Request with random UA
-                headers = {'User-Agent': random.choice(self.user_agents)}
-                
-                # We use the BaseCollector's fetch but with custom headers override if possible
-                # BaseCollector.fetch_page uses httpx. Let's assume it handles standard headers.
-                # If we need custom headers, we might need to override fetch_page or use a session here.
-                # For simplicity, we'll try the base fetch first.
-                
-                html = await self.fetch_page(url) 
-                
-                if not html or "No results" in html:
-                    continue
+                for page_num in range(1, 6): # Pages 1 to 5
+                    self.logger.info(f"  -> Page {page_num}...")
+                    
+                    # Random delay
+                    await asyncio.sleep(random.uniform(2.0, 4.0))
+                    
+                    headers = {'User-Agent': random.choice(self.user_agents)}
+                    html = await self.fetch_page(current_url) 
+                    
+                    if not html or "No results" in html:
+                        break
 
-                soup = BeautifulSoup(html, 'html.parser')
-                results = soup.find_all('div', class_='result')
-                
-                for res in results:
-                    title_tag = res.find('a', class_='result__a')
-                    snippet_tag = res.find('a', class_='result__snippet')
-                    if not title_tag: continue
+                    soup = BeautifulSoup(html, 'html.parser')
+                    results = soup.find_all('div', class_='result')
                     
-                    title = title_tag.get_text(strip=True)
-                    link = title_tag.get('href', '')
-                    snippet = snippet_tag.get_text(strip=True) if snippet_tag else ""
-                    
-                    # 1. Parsing Logic
-                    name = self._extract_name(title)
-                    if not name or len(name) > 40: continue
-                    
-                    # 2. Heuristics (Is it crypto?)
-                    combined_text = (title + " " + snippet).lower()
-                    keywords = ['crypto', 'web3', 'defi', 'token', 'chain', 'protocol', 'dao', 'nft', 'wallet', 'ledger']
-                    if not any(k in combined_text for k in keywords):
-                        continue
+                    page_leads_count = 0
+                    for res in results:
+                        title_tag = res.find('a', class_='result__a')
+                        snippet_tag = res.find('a', class_='result__snippet')
+                        if not title_tag: continue
                         
-                    # 3. Create Lead
-                    lead = RawLead(
-                        name=name,
-                        source="universal_search",
-                        website=link if "http" in link else None,
-                        extra_data={
-                            "query": q,
-                            "context": title,
-                            "snippet": snippet[:100]
-                        }
-                    )
-                    
-                    # Handle extraction
-                    if "twitter.com" in link or "x.com" in link:
-                         m = re.search(r'(?:twitter\.com|x\.com)/([a-zA-Z0-9_]+)', link)
-                         if m: lead.twitter_handle = m.group(1)
+                        title = title_tag.get_text(strip=True)
+                        link = title_tag.get('href', '')
+                        snippet = snippet_tag.get_text(strip=True) if snippet_tag else ""
+                        
+                        # 1. Parsing Logic
+                        name = self._extract_name(title)
+                        if not name or len(name) > 40: continue
+                        
+                        # 2. Heuristics
+                        combined_text = (title + " " + snippet).lower()
+                        keywords = ['crypto', 'web3', 'defi', 'token', 'chain', 'protocol', 'dao', 'nft', 'wallet', 'ledger']
+                        if not any(k in combined_text for k in keywords):
+                            continue
+                            
+                        # 3. Create Lead
+                        lead = RawLead(
+                            name=name,
+                            source=f"universal_search_p{page_num}",
+                            website=link if "http" in link else None,
+                            extra_data={
+                                "query": q,
+                                "context": title,
+                                "snippet": snippet[:100]
+                            }
+                        )
+                        
+                        # Handle extraction
+                        if "twitter.com" in link or "x.com" in link:
+                             m = re.search(r'(?:twitter\.com|x\.com)/([a-zA-Z0-9_]+)', link)
+                             if m: lead.twitter_handle = m.group(1)
+                             
+                        leads.append(lead)
+                        page_leads_count += 1
+                        
+                    # Find Next Page
+                    # DDG HTML has a form with <input name="s"> and <input name="dc">
+                    next_form = soup.find('form', action='/html/')
+                    if not next_form or "next" not in next_form.get_text().lower():
+                         # No next page
+                         break
                          
-                    leads.append(lead)
+                    # Extract hidden inputs for next page
+                    inputs = next_form.find_all('input', type='hidden')
+                    params = {i.get('name'): i.get('value') for i in inputs}
+                    params['q'] = q # Ensure q is preserved
+                    
+                    # Construct next URL
+                    query_string = urllib.parse.urlencode(params)
+                    current_url = f"https://html.duckduckgo.com/html/?{query_string}"
+                    
+                    if page_leads_count == 0:
+                        break # Stop if current page yielded nothing helpful
             
             self.logger.info(f"✅ Universal Search found {len(leads)} candidates")
             

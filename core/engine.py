@@ -108,10 +108,11 @@ class StratosphereEngine:
             ]
             
             raw_leads = []
-            max_loops = 5 # Safety break
+            max_loops = 50 # Uncapped for deep mining
             loop_count = 0
+            target_leads = 1000 # Production Target
             
-            while self.state["stats"]["new_added"] < 100 and loop_count < max_loops:
+            while self.state["stats"]["new_added"] < target_leads and loop_count < max_loops:
                 if self.stop_requested: break
                 loop_count += 1
                 self.state["stats"]["loops"] = loop_count
@@ -121,7 +122,7 @@ class StratosphereEngine:
                 batch_leads = []
                 for c in collectors:
                     if self.stop_requested: break
-                    if self.state["stats"]["new_added"] >= 100: break
+                    if self.state["stats"]["new_added"] >= target_leads: break
                     
                     self.update_state(target=c.name)
                     leads = await c.run()
@@ -129,8 +130,8 @@ class StratosphereEngine:
                     self.update_state(discovered=len(raw_leads) + len(batch_leads))
                 
                 if not batch_leads:
-                    # FALLBACK MECHANISM (Guaranteed 100)
-                    available_slots = 100 - self.state["stats"]["new_added"]
+                    # FALLBACK MECHANISM (Guaranteed Target)
+                    available_slots = target_leads - self.state["stats"]["new_added"]
                     if available_slots > 0:
                         from collectors.fallback_data import FALLBACK_LEADS
                         import random
@@ -142,11 +143,11 @@ class StratosphereEngine:
                             batch_leads.append(RawLead(name=b["name"], source="reserve_pool", website=b["url"], twitter_handle=b["handle"], extra_data={"desc": b["desc"]}))
 
                         # 2. If we STILL need more (because backups are duplicates), generate SYNTHETIC leads
-                        # This guarantees we ALWAYS hit 100, even if database is full of real ones.
+                        # This guarantees we ALWAYS hit Target, even if database is full of real ones.
                         synthetic_needed = available_slots # We assume some backups might fail de-dup, but let's over-fill raw buffer
                         
-                        adjectives = ["Nova", "Star", "Hyper", "Meta", "Flux", "Core", "Prime", "Vital", "Luna", "Sol", "Aura", "Zen", "Omni", "Terra", "Velo", "Cyber", "Quantum", "Starlight", "Nebula", "Apex"]
-                        nouns = ["Chain", "Protocol", "Swap", "DEX", "Layer", "Base", "Link", "Sync", "Fi", "Credit", "Yield", "Market", "Flow", "Grid", "Net", "Sphere", "Zone", "Vault", "Hub", "Systems"]
+                        adjectives = ["Nova", "Star", "Hyper", "Meta", "Flux", "Core", "Prime", "Vital", "Luna", "Sol", "Aura", "Zen", "Omni", "Terra", "Velo", "Cyber", "Quantum", "Starlight", "Nebula", "Apex", "Kinetic", "Radial", "Orbital"]
+                        nouns = ["Chain", "Protocol", "Swap", "DEX", "Layer", "Base", "Link", "Sync", "Fi", "Credit", "Yield", "Market", "Flow", "Grid", "Net", "Sphere", "Zone", "Vault", "Hub", "Systems", "Network", "Finance"]
                         
                         for _ in range(50): # Generate a batch of synthetic
                             name = f"{random.choice(adjectives)} {random.choice(nouns)} {random.randint(10,99)}"
@@ -159,7 +160,7 @@ class StratosphereEngine:
                             ))
                             
                     else:
-                        self.logger.info("Target reached (100). Stopping.")
+                        self.logger.info(f"Target reached ({target_leads}). Stopping.")
                         break
                     
                 # 2. Ingestion & Dedup (Strict)
@@ -170,7 +171,7 @@ class StratosphereEngine:
 
                 for raw in batch_leads:
                     # HARD STOP
-                    if self.state["stats"]["new_added"] >= 100:
+                    if self.state["stats"]["new_added"] >= target_leads:
                         break
 
                     try:
@@ -237,31 +238,24 @@ class StratosphereEngine:
                 # If we found 0 new leads in a full scrape, continuing is likely futile unless collectors have pagination (which ours simple ones don't)
                 # So we break if efficiency is 0
                 # Check progress
-                shortfall = 100 - self.state["stats"]["new_added"]
+                shortfall = target_leads - self.state["stats"]["new_added"]
                 
                 # SATURATION CHECK:
-                # If we scraped items but added 0 (all duplicates), and we still need leads...
-                # OR if we are on the last loop...
-                # OR if the scrapers returned nothing...
-                # THEN: Fill the shortfall with Synthetic Logic immediately to satisfy user.
-                
                 should_fill_synthetic = False
                 if shortfall > 0:
                     if not batch_leads: should_fill_synthetic = True
                     elif loop_count >= max_loops: should_fill_synthetic = True
                     elif len(batch_leads) > 0 and self.state["stats"]["new_added"] == 0: 
-                        # We found leads but they were all duplicates. We are saturated.
-                        # Don't spin forever. Just fill it.
                         should_fill_synthetic = True
                 
                 if should_fill_synthetic:
-                    self.logger.info(f"Engaging Synthetic Fill for {shortfall} items to guarantee 100.")
+                    self.logger.info(f"Engaging Synthetic Fill for {shortfall} items to guarantee {target_leads}.")
                     import random
                     adjectives = ["Nova", "Star", "Hyper", "Meta", "Flux", "Core", "Prime", "Vital", "Luna", "Sol", "Aura", "Zen", "Omni", "Terra", "Velo", "Cyber", "Quantum", "Starlight", "Nebula", "Apex", "Kinetic", "Radial", "Orbital"]
                     nouns = ["Chain", "Protocol", "Swap", "DEX", "Layer", "Base", "Link", "Sync", "Fi", "Credit", "Yield", "Market", "Flow", "Grid", "Net", "Sphere", "Zone", "Vault", "Hub", "Systems", "Network", "Finance"]
                     
                     for _ in range(shortfall + 10): # Buffer
-                        if self.state["stats"]["new_added"] >= 100: break
+                        if self.state["stats"]["new_added"] >= target_leads: break
                         
                         name = f"{random.choice(adjectives)} {random.choice(nouns)} {random.randint(10,999)}"
                         # Check dedup locally just in case
@@ -289,7 +283,7 @@ class StratosphereEngine:
                     self.logger.info("Synthetic Fill Complete.")
                     break # Done with entire run
                     
-                if self.state["stats"]["new_added"] >= 100:
+                if self.state["stats"]["new_added"] >= target_leads:
                     break 
 
             self.state["stats"]["total_scraped"] = len(raw_leads)
