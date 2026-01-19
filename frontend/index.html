@@ -103,11 +103,173 @@
     <!-- Toast Container -->
     <div id="toast-container" class="fixed top-24 right-6 z-50 flex flex-col gap-3 pointer-events-none"></div>
 
-    <!-- ... rest of body ... -->
+    <!-- Ambient Orbs -->
+    <div
+        class="fixed top-0 left-[-20%] w-[800px] h-[800px] bg-violet-600/10 rounded-full blur-[128px] pointer-events-none animate-pulse-soft">
+    </div>
+    <div
+        class="fixed bottom-0 right-[-20%] w-[600px] h-[600px] bg-indigo-900/20 rounded-full blur-[128px] pointer-events-none">
+    </div>
 
-    <!-- Feed Content -->
-    <div id="lead-list" class="flex-1 overflow-y-auto p-5 space-y-3 scroll-smooth no-scrollbar">
-        <!-- LEADS WILL RENDER HERE -->
+    <div class="max-w-7xl mx-auto px-4 md:px-6 relative z-10 pt-4 md:pt-8">
+
+        <!-- UNIFIED GLASS HEADER -->
+        <header
+            class="glass-panel rounded-2xl p-5 md:p-6 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl border-white/5 relative overflow-hidden group">
+
+            <!-- Shine Effect -->
+            <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:animate-[shine_1.5s_ease-in-out_infinite]"
+                style="animation-play-state: paused;"></div>
+
+            <!-- Brand Section -->
+            <div class="flex flex-col md:flex-row items-center gap-6 text-center md:text-left z-10">
+                <div class="relative group">
+                    <div
+                        class="absolute -inset-1 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-2xl blur opacity-30 group-hover:opacity-60 transition duration-500">
+                    </div>
+                    <img id="logo-img" src="/assets/brand_logo.jpg" alt="Logo"
+                        class="relative w-24 h-24 rounded-2xl shadow-2xl object-cover border border-white/10 ring-1 ring-white/5">
+                </div>
+
+                <div>
+                    <h1 class="text-4xl md:text-5xl font-bold text-white tracking-tight mb-2 drop-shadow-lg">
+                        Stratosphere <span
+                            class="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-indigo-300 font-light">Radar</span>
+                    </h1>
+                    <div class="flex flex-wrap justify-center md:justify-start gap-2">
+                        <span
+                            class="px-3 py-1 rounded-full text-xs font-bold bg-violet-500/10 text-violet-200 border border-violet-500/20 shadow-inner shadow-violet-500/5">v3.5
+                            Active</span>
+
+                        <!-- Status Badge with ID restored for JS -->
+                        <div
+                            class="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-inner shadow-emerald-500/5">
+                            <span id="status-indicator"
+                                class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_currentColor]"></span>
+                            <span id="status-text">System Online</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Cluster -->
+            <div class="flex flex-wrap justify-center items-center gap-3 w-full md:w-auto z-10">
+                <div id="loading-indicator"
+                    class="hidden flex items-center gap-2 px-4 py-2 rounded-full bg-black/40 border border-white/10 backdrop-blur-md">
+                    <div class="w-4 h-4 border-2 border-violet-400 border-t-transparent rounded-full animate-spin">
+                    </div>
+                    <span id="loading-text" class="text-xs font-medium text-violet-200">Processing...</span>
+                </div>
+
+                <button onclick="stopPipeline()" id="btn-stop"
+                    class="hidden px-5 py-2.5 rounded-xl text-xs font-bold text-red-200 bg-red-500/20 border border-red-500/30 hover:bg-red-500/30 transition-all shadow-[0_0_15px_rgba(239,68,68,0.2)]">STOP
+                    SYSTEM</button>
+
+                <button onclick="window.open('/leads/export?run_id=' + (currentRunId || ''), '_blank')"
+                    class="p-3.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:scale-105 active:scale-95 transition-all text-gray-400 hover:text-white group"
+                    title="Export CSV">
+                    <i data-lucide="download" class="w-5 h-5 group-hover:text-violet-300 transition-colors"></i>
+                </button>
+
+                <button id="btn-generate" onclick="handleGenerate()"
+                    class="relative group px-10 py-3.5 rounded-xl bg-white text-black font-bold text-sm shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_40px_rgba(124,58,237,0.4)] transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden w-full md:w-auto">
+                    <span class="relative z-10 flex items-center justify-center gap-2">
+                        <i data-lucide="radar"
+                            class="w-5 h-5 text-violet-600 transition-transform group-hover:rotate-180"></i>
+                        INITIATE SCAN
+                    </span>
+                    <div
+                        class="absolute inset-0 bg-gradient-to-r from-violet-100 via-white to-violet-100 opacity-0 group-hover:opacity-100 transition-opacity">
+                    </div>
+                    <!-- Ripple effect container -->
+                    <div class="absolute inset-0 pointer-events-none group-hover:animate-pulse bg-violet-500/10"></div>
+                </button>
+            </div>
+        </header>
+
+        <!-- KPI STATS (Vertical Stack Mobile) -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <!-- Total -->
+            <div class="glass-card p-6 md:p-8 rounded-2xl flex items-center justify-between group cursor-default">
+                <div>
+                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mb-2">Discovered</h3>
+                    <h2 id="stat-total"
+                        class="text-5xl md:text-6xl font-bold text-white group-hover:text-violet-300 transition-colors drop-shadow-md">
+                        0</h2>
+                </div>
+                <div
+                    class="p-5 rounded-2xl bg-violet-500/10 text-violet-400 group-hover:scale-110 group-hover:bg-violet-500/20 group-hover:shadow-[0_0_30px_rgba(139,92,246,0.3)] transition-all duration-500">
+                    <i data-lucide="database" class="w-8 h-8 md:w-10 md:h-10"></i>
+                </div>
+            </div>
+
+            <!-- Ready -->
+            <div class="glass-card p-6 md:p-8 rounded-2xl flex items-center justify-between group cursor-default">
+                <div>
+                    <h3 class="text-xs font-bold text-emerald-500/60 uppercase tracking-[0.2em] mb-2">Ready to DM</h3>
+                    <h2 id="stat-ready"
+                        class="text-5xl md:text-6xl font-bold text-white group-hover:text-emerald-300 transition-colors drop-shadow-md">
+                        0</h2>
+                </div>
+                <div
+                    class="p-5 rounded-2xl bg-emerald-500/10 text-emerald-400 group-hover:scale-110 group-hover:bg-emerald-500/20 group-hover:shadow-[0_0_30px_rgba(16,185,129,0.3)] transition-all duration-500">
+                    <i data-lucide="send" class="w-8 h-8 md:w-10 md:h-10"></i>
+                </div>
+            </div>
+
+            <!-- AI -->
+            <div class="glass-card p-6 md:p-8 rounded-2xl flex items-center justify-between group cursor-default">
+                <div>
+                    <h3 class="text-xs font-bold text-amber-500/60 uppercase tracking-[0.2em] mb-2">AI Analyst</h3>
+                    <h2 id="stat-alt"
+                        class="text-5xl md:text-6xl font-bold text-white group-hover:text-amber-300 transition-colors drop-shadow-md">
+                        0</h2>
+                </div>
+                <div
+                    class="p-5 rounded-2xl bg-amber-500/10 text-amber-400 group-hover:scale-110 group-hover:bg-amber-500/20 group-hover:shadow-[0_0_30px_rgba(245,158,11,0.3)] transition-all duration-500">
+                    <i data-lucide="bot" class="w-8 h-8 md:w-10 md:h-10"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN FEED -->
+        <div
+            class="glass-panel rounded-2xl flex flex-col h-[calc(100vh-480px)] min-h-[500px] border-t border-white/10 shadow-2xl relative overflow-hidden">
+            <!-- Feed Headers -->
+            <div
+                class="p-5 border-b border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0 bg-black/20 backdrop-blur-xl z-20">
+                <div class="flex items-center gap-3">
+                    <h3 class="text-lg font-bold text-white flex items-center gap-3">
+                        <i data-lucide="list-filter" class="w-5 h-5 text-violet-400"></i> Lead Stream
+                    </h3>
+
+                    <div id="progress-container"
+                        class="hidden w-32 h-1.5 bg-gray-800 rounded-full overflow-hidden shadow-inner">
+                        <div id="progress-bar"
+                            class="h-full bg-gradient-to-r from-violet-600 to-indigo-400 transition-all duration-500 w-0">
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    class="flex p-1 bg-black/40 rounded-xl border border-white/5 overflow-x-auto no-scrollbar shadow-inner">
+                    <button onclick="setFilter('READY_TO_DM')" id="tab-ready"
+                        class="flex-1 whitespace-nowrap px-5 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition-colors uppercase tracking-wider">Ready
+                        to DM</button>
+                    <button onclick="setFilter('NEEDS_ALT_OUTREACH')" id="tab-ai"
+                        class="flex-1 whitespace-nowrap px-5 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition-colors uppercase tracking-wider">AI
+                        Required</button>
+                    <button onclick="setFilter('')" id="tab-all"
+                        class="flex-1 whitespace-nowrap px-5 py-2 text-xs font-bold rounded-lg bg-violet-600 text-white shadow-[0_0_15px_rgba(124,58,237,0.4)] transition-all uppercase tracking-wider">All
+                        Signals</button>
+                </div>
+            </div>
+
+            <!-- Feed Content -->
+            <div id="lead-list" class="flex-1 overflow-y-auto p-5 space-y-3 scroll-smooth no-scrollbar">
+                <!-- LEADS WILL RENDER HERE -->
+            </div>
+        </div>
     </div>
 
     <script>
@@ -131,8 +293,8 @@
 
             const el = document.createElement('div');
             el.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl backdrop-blur-md shadow-2xl border transition-all duration-300 transform translate-x-10 opacity-0 ${type === 'error' ? 'bg-red-500/20 border-red-500/30 text-red-200' :
-                    type === 'success' ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-200' :
-                        'bg-violet-500/20 border-violet-500/30 text-white'
+                type === 'success' ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-200' :
+                    'bg-violet-500/20 border-violet-500/30 text-white'
                 }`;
 
             let icon = type === 'error' ? 'alert-circle' : type === 'success' ? 'check-circle' : 'info';
