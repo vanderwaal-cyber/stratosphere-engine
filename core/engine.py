@@ -13,6 +13,7 @@ from collectors.search import UniversalSearchCollector
 from collectors.github import GithubCollector
 from collectors.launchpads import LaunchpadCollector
 from core.logger import app_logger
+from core.notifications import NotificationManager
 
 # Batching & Lead Generation Logic
 class LeadBatchGenerator:
@@ -154,8 +155,6 @@ class StratosphereEngine:
         for k, v in kwargs.items():
             if k in self.state: self.state[k] = v
         self.state["updated_at"] = datetime.utcnow().isoformat()
-
-from core.notifications import NotificationManager
 
     async def run(self, mode="fresh", run_id=None):
         self.stop_requested = False
