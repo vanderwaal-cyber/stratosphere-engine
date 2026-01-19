@@ -602,25 +602,72 @@
         }
 
 
+        async function analyzeLead(id, btn) {
+            if (!btn) return;
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `<i data-lucide="loader-2" class="w-3 h-3 animate-spin"></i> Analyzing...`;
+            if (window.lucide) lucide.createIcons();
+
+            try {
+                const res = await fetch(`${API_URL}/api/leads/${id}/analyze`, { method: 'POST' });
+                if (!res.ok) throw new Error("Analysis failed");
+                const data = await res.json();
+
+                // Success: Refresh data to show result
+                // But for instant feedback, let's find the card and inject it
+                const card = document.querySelector(`div[data-id="${id}"]`);
+                if (card) {
+                    const resultContainer = card.querySelector('.analysis-result');
+                    if (resultContainer) {
+                        resultContainer.innerHTML = renderAnalysisBlock(data);
+                        resultContainer.classList.remove('hidden');
+                        btn.innerHTML = `<i data-lucide="check" class="w-3 h-3"></i> Done`;
+                    }
+                }
+                setTimeout(() => fetchData(), 1500); // Full refresh to sync state
+
+            } catch (e) {
+                showToast(e.message, "error");
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+
+        function renderAnalysisBlock(lead) {
+            if (!lead.ai_analysis) return '';
+
+            // Convert markdown-ish text to HTML lines
+            const analysisHtml = lead.ai_analysis.split('\n').map(line => `<div class="mb-1">${line}</div>`).join('');
+
+            return `
+                <div class="mt-4 p-4 rounded-xl bg-violet-500/10 border border-violet-500/20 text-xs text-violet-200">
+                    <h4 class="font-bold text-violet-300 mb-2 flex items-center gap-2"><i data-lucide="sparkles" class="w-3 h-3"></i> AI Analysis</h4>
+                    <div class="space-y-1 opacity-90 leading-relaxed mb-3">${analysisHtml}</div>
+                    
+                    ${lead.icebreaker ? `
+                    <div class="mt-3 pt-3 border-t border-violet-500/20">
+                        <h4 class="font-bold text-violet-300 mb-1 flex items-center gap-2"><i data-lucide="message-square" class="w-3 h-3"></i> Suggested Opener</h4>
+                        <div class="p-3 rounded-lg bg-black/20 text-gray-300 font-mono select-all cursor-pointer hover:bg-black/30 transition-colors" title="Click to Copy" onclick="navigator.clipboard.writeText(this.innerText); showToast('Copied to clipboard', 'success')">${lead.icebreaker}</div>
+                    </div>` : ''}
+                </div>
+            `;
+        }
+
         // renderLeads (modified)
         function renderLeads(leads) {
             const list = $('lead-list');
             if (!list) return;
 
             if (!leads || leads.length === 0) {
-                // Use SKELETONS instead of text if we are 'running' but have 0 leads? 
-                // Or if effectively empty DB.
-                // User asked: "When the Lead Stream is empty, show 5 'pulsing' lead skeletons"
                 renderSkeletons();
                 return;
             }
 
-            // ... Diffing Logic (keep same) ...
             const existingMap = new Map();
             list.querySelectorAll('[data-id]').forEach(el => existingMap.set(parseInt(el.dataset.id), el));
 
             leads.forEach((lead, index) => {
-                // ... (keep same logic) ...
                 let el = existingMap.get(lead.id);
                 let isNew = false;
                 if (!el) {
@@ -632,25 +679,19 @@
                     el.style.animationDelay = `${Math.min(index * 0.05, 1.0)}s`;
                 }
 
-                // Hot Glow
                 const isHot = (lead.score || 0) > 40;
-                if (isHot) {
-                    el.classList.add('border-orange-500/20', 'bg-orange-500/5');
-                } else {
-                    el.classList.remove('border-orange-500/20', 'bg-orange-500/5');
-                }
+                if (isHot) el.classList.add('border-orange-500/20', 'bg-orange-500/5');
+                else el.classList.remove('border-orange-500/20', 'bg-orange-500/5');
 
-                // Badges
                 let badges = '';
                 if (lead.bucket === 'READY_TO_DM') {
                     badges += `<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-[0_0_10px_rgba(16,185,129,0.1)]">Ready</span>`;
-                } else if (lead.status === 'processed') {
-                    badges += `<span class="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">Analyzed</span>`;
+                } else if (lead.ai_analysis) {
+                    badges += `<span class="bg-violet-500/10 text-violet-400 border border-violet-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-[0_0_10px_rgba(139,92,246,0.1)]">Analyzed</span>`;
                 } else {
                     badges += `<span class="bg-gray-800 text-gray-400 border border-gray-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">New</span>`;
                 }
 
-                // Hot Score
                 if (isHot) {
                     badges = `<span class="bg-orange-500/10 text-orange-400 border border-orange-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1"><i data-lucide="flame" class="w-3 h-3"></i> ${lead.score}</span>` + badges;
                 }
@@ -658,6 +699,8 @@
                 const handle = lead.twitter_handle ? lead.twitter_handle.replace('@', '') : '';
                 const pfp = lead.profile_image_url || (handle ? `https://unavatar.io/twitter/${handle}` : `https://ui-avatars.com/api/?name=${lead.project_name}&background=1e293b&color=fff`);
                 let desc = (lead.description || "No description available.").replace(/["{}]/g, "");
+
+                const analysisBlock = renderAnalysisBlock(lead);
 
                 const html = `
                             <div class="relative w-12 h-12 shrink-0 group-hover:scale-105 transition-transform duration-500 ease-out">
@@ -677,6 +720,17 @@
                                      ${lead.domain ? `<a href="${lead.domain}" target="_blank" class="text-[10px] font-bold text-white hover:text-violet-300 flex items-center gap-1"><i data-lucide="globe" class="w-3 h-3"></i> Web</a>` : ''}
                                      ${handle ? `<a href="https://twitter.com/${handle}" target="_blank" class="text-[10px] font-bold text-[#1DA1F2] hover:text-white flex items-center gap-1"><i data-lucide="twitter" class="w-3 h-3"></i> @${handle}</a>` : ''}
                                      <span class="ml-auto text-[10px] text-gray-600 font-mono">${timeAgo(lead.created_at)}</span>
+                                     
+                                     <!-- Analyze Button -->
+                                     ${!lead.ai_analysis ?
+                        `<button onclick="analyzeLead(${lead.id}, this)" class="ml-2 px-3 py-1 bg-violet-600/20 hover:bg-violet-600 text-violet-300 hover:text-white text-[10px] font-bold uppercase rounded-md transition-all flex items-center gap-1 shadow-[0_0_10px_rgba(124,58,237,0.1)] hover:shadow-[0_0_15px_rgba(124,58,237,0.5)]">
+                                        <i data-lucide="sparkles" class="w-3 h-3"></i> Analyze
+                                      </button>` : ''}
+                                </div>
+                                
+                                <!-- Analysis Result Injection Point -->
+                                <div class="analysis-result ${lead.ai_analysis ? '' : 'hidden'}">
+                                     ${analysisBlock}
                                 </div>
                             </div>
                         `;

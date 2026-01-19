@@ -43,6 +43,10 @@ class Lead(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     last_contacted_at = Column(DateTime(timezone=True), nullable=True)
     
+    # AI Analysis
+    ai_analysis = Column(Text, nullable=True) # JSON or Text blob of analysis
+    icebreaker = Column(Text, nullable=True)  # Generated DM opener
+    
     # Relations
     sources = relationship("LeadSource", back_populates="lead", cascade="all, delete-orphan")
     logs = relationship("RunLog", back_populates="lead", cascade="all, delete-orphan")

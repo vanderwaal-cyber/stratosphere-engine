@@ -45,6 +45,16 @@ async def startup_db():
                 conn.commit()
             except: pass
 
+            try:
+                conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS ai_analysis TEXT"))
+                conn.commit()
+            except: pass
+
+            try:
+                conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS icebreaker TEXT"))
+                conn.commit()
+            except: pass
+
             print("Migration (Postgres) attempts complete.")
         except Exception:
             # 2. Try SQLite (Local) - No IF NOT EXISTS
@@ -60,6 +70,16 @@ async def startup_db():
             
             try:
                 conn.execute(text("ALTER TABLE leads ADD COLUMN profile_image_url VARCHAR"))
+                conn.commit()
+            except: pass
+            
+            try:
+                conn.execute(text("ALTER TABLE leads ADD COLUMN ai_analysis TEXT"))
+                conn.commit()
+            except: pass
+
+            try:
+                conn.execute(text("ALTER TABLE leads ADD COLUMN icebreaker TEXT"))
                 conn.commit()
             except: pass
             
@@ -84,6 +104,8 @@ class LeadBase(BaseModel):
     reject_reason: Optional[str] = None
     created_at: Optional[datetime] = None
     run_id: Optional[str] = None
+    ai_analysis: Optional[str] = None
+    icebreaker: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -164,6 +186,56 @@ async def stop_pipeline():
 def get_pipeline_status():
     return engine_instance.state
 
+@app.post("/api/leads/{lead_id}/analyze")
+async def analyze_lead(lead_id: int, db: Session = Depends(get_db)):
+    lead = db.query(LeadModel).filter(LeadModel.id == lead_id).first()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+        
+    try:
+        # Simulate AI Analysis (Replace with Real LLM Call later)
+        # Using simple heuristics for now to be fast and robust
+        
+        analysis = []
+        project = lead.project_name or "Project"
+        desc = (lead.description or "").lower()
+        
+        # Fit Score Calc
+        fit_score = 75
+        if "defi" in desc or "protocol" in desc: fit_score += 10
+        if "waitlist" in desc: fit_score += 5
+        if "hiring" in desc: fit_score += 5
+        
+        # 1. Strategy
+        if "launch" in desc or "soon" in desc:
+            analysis.append(f"🚀 **Launch Phase**: {project} is in pre-launch. Pitch 'Waitlist Growth' strategies.")
+        elif "hiring" in desc:
+             analysis.append(f"👥 **Scaling**: They are hiring. Pitch 'Employer Branding' or specialized recruitment marketing.")
+        else:
+             analysis.append(f"📣 **General Growth**: Focus on increasing TVL and community engagement.")
+             
+        # 2. Tech Stack Spy
+        stack = []
+        if "solana" in desc: stack.append("Solana")
+        if "ethereum" in desc: stack.append("Ethereum")
+        if stack:
+            analysis.append(f"🛠 **Tech**: Built on {', '.join(stack)}.")
+            
+        lead.ai_analysis = "\n".join(analysis)
+        
+        # 3. Icebreaker
+        if lead.twitter_handle:
+            clean_handle = lead.twitter_handle.replace("@","")
+            lead.icebreaker = f"Hey @{clean_handle}, saw the updates on {project}. The new roadmap looks solid. Are you guys focused on growing the TG community right now?"
+        else:
+            lead.icebreaker = f"Hey {project} team, just checking out the protocol. Are you focused on TG growth?"
+            
+        db.commit()
+        return {"id": lead.id, "ai_analysis": lead.ai_analysis, "icebreaker": lead.icebreaker}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/dashboard", response_class=HTMLResponse)
 def read_dashboard():
     # Defensive path check
@@ -206,12 +278,12 @@ async def export_leads(run_id: Optional[str] = None, db: Session = Depends(get_d
     writer = csv.writer(stream)
     
     # Headers
-    writer.writerow(["ID", "Project", "Website", "Twitter", "Status", "Bucket", "Email", "Run ID", "Found At"])
+    writer.writerow(["ID", "Project", "Website", "Twitter", "Status", "Bucket", "Email", "Run ID", "Found At", "AI Analysis"])
     
     for l in leads:
         writer.writerow([
             l.id, l.project_name, l.domain, l.twitter_handle, 
-            l.status, l.bucket, l.email, l.run_id, l.created_at
+            l.status, l.bucket, l.email, l.run_id, l.created_at, l.ai_analysis
         ])
         
     stream.seek(0)
