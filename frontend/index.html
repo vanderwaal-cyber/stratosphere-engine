@@ -127,8 +127,8 @@
                             class="text-primary font-light">Lead Engine</span></h1>
                     <div class="flex items-center gap-3 text-sm text-gray-400">
                         <span
-                            class="px-2 py-0.5 rounded text-xs font-medium bg-blue-500/20 text-blue-300 border border-blue-500/30">v2.0
-                            (All Leads)</span>
+                            class="px-2 py-0.5 rounded text-xs font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">v3.0
+                            HyperScale</span>
                         <span>•</span>
                         <p id="status-text" class="font-medium text-emerald-400">System Active</p>
                         <span>•</span>
@@ -150,18 +150,18 @@
                     Stop Run
                 </button>
 
-                <!-- Run Mode Selector -->
+                <!-- Run Mode / Filter -->
                 <select id="run-mode"
                     class="bg-surfaceHighlight border border-white/5 text-gray-300 text-sm rounded-lg px-3 py-2.5 outline-none focus:border-primary/50 transition-colors cursor-pointer hover:bg-white/5">
-                    <option value="fresh">Fresh Scrape</option>
-                    <option value="refresh">Re-Scan All</option>
+                    <option value="all">View All (3k+)</option>
+                    <option value="recent">Latest Run Only</option>
                 </select>
 
-                <button id="btn-generate"
+                <button id="btn-generate" onclick="handleGenerate()"
                     class="relative group px-6 py-2.5 rounded-lg bg-white text-black font-semibold text-sm shadow-lg shadow-white/5 hover:shadow-primary/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden">
                     <span class="relative z-10 flex items-center gap-2">
                         <i data-lucide="sparkles" class="w-4 h-4 text-primary"></i>
-                        Generate Leads
+                        Generate 1000+
                     </span>
                     <div
                         class="absolute inset-0 bg-gradient-to-r from-gray-100 to-white opacity-0 group-hover:opacity-100 transition-opacity">
@@ -452,10 +452,11 @@
             }
         }
 
-        function renderLeads(leads) {
+        function renderLeads(leads, append = false) {
             const list = document.getElementById('lead-list');
-            list.innerHTML = '';
-            if (!leads || leads.length === 0) {
+            if (!append) list.innerHTML = ''; // Start Fresh only if not appending
+
+            if (leads.length === 0 && !append) {
                 list.innerHTML = `<div class="flex flex-col items-center justify-center py-20 text-gray-500 opacity-60"><i data-lucide="ghost" class="w-16 h-16 mb-4 stroke-[1]"></i><p class="text-lg font-medium">No leads found.</p></div>`;
                 lucide.createIcons();
                 return;
