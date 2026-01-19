@@ -236,6 +236,24 @@ async def analyze_lead(lead_id: int, db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+class StatusUpdate(BaseModel):
+    status: Optional[str] = None
+    bucket: Optional[str] = None
+
+@app.post("/api/leads/{lead_id}/status")
+async def update_lead_status(lead_id: int, update: StatusUpdate, db: Session = Depends(get_db)):
+    lead = db.query(LeadModel).filter(LeadModel.id == lead_id).first()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    if update.status:
+        lead.status = update.status
+    if update.bucket:
+        lead.bucket = update.bucket
+        
+    db.commit()
+    return {"id": lead.id, "status": lead.status, "bucket": lead.bucket}
+
 @app.get("/dashboard", response_class=HTMLResponse)
 def read_dashboard():
     # Defensive path check
