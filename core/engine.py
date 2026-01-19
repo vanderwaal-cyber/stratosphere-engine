@@ -193,19 +193,19 @@ class StratosphereEngine:
         try:
             # REAL SOURCES ONLY - No Synthetic
             collectors = [
-                UniversalSearchCollector(), # The Heavy Lifter
-                GithubCollector(),          # Re-enabled with care
-                # LaunchpadCollector(),      # Often blocked, keep off for now
-                # DeFiLlamaCollector(),      # Good but sparse
-                # XKeywordCollector(),       # DDG dependent
+                DeFiLlamaCollector(),      # API Based - High Reliability
+                LaunchpadCollector(),      # Aggregator - High Quality
+                GithubCollector(),         # API/Scrape - Medium Reliability
+                UniversalSearchCollector(), # Search - Low Reliability (Blocked often)
+                # XKeywordCollector(),     # DDG dependent - Low Reliability
             ]
             
             # EMERGENCY FALLBACK: If we have found NOTHING after a few tries, load fallback data
             from collectors.fallback_data import FALLBACK_LEADS
             # We don't add FallbackDataCollector to the loop, we use it directly if loop yields 0.
             
-            target_leads = 50 
-            max_loops = 200 
+            target_leads = 100 # Increased target as we have more sources
+            max_loops = 100 
             
             while self.state["stats"]["new_added"] < target_leads and self.state["stats"]["loops"] < max_loops:
                 if self.stop_requested: break
