@@ -24,28 +24,46 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 @app.on_event("startup")
 async def startup_db():
     print("Running DB Startup...")
-    # Ensure tables exist
     Base.metadata.create_all(bind=engine)
     
-    # Robust Migration
-    try:
-        with engine.connect() as conn:
-            # Check if column exists logic could be here, but IF NOT EXISTS is safe enough
+    # Robust Migration (Run ID)
+    with engine.connect() as conn:
+        try:
+            # 1. Try Postgres (Ideal for Prod)
             conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS run_id VARCHAR"))
             conn.commit()
-            print("Migration (run_id) completed successfully.")
-    except Exception as e:
-        print(f"Migration Error: {e}")
+            print("Migration (Postgres) success.")
+        except Exception:
+            try:
+                # 2. Try SQLite (Local) - No IF NOT EXISTS
+                conn.execute(text("ALTER TABLE leads ADD COLUMN run_id VARCHAR"))
+                conn.commit()
+                print("Migration (SQLite) success.")
+            except Exception as e:
+                # 3. Assume it exists or something else is wrong
+                print(f"Migration Note: {e}")
 
-@app.get("/debug/schema")
-def debug_schema():
+@app.get("/leads", response_model=List[LeadBase])
+@limiter.limit("60/minute")
+async def read_leads(request: Request, skip: int = 0, limit: int = 100, bucket: Optional[str] = None, run_id: Optional[str] = None, created_after: Optional[datetime] = None, db: Session = Depends(get_db)):
     try:
-        from sqlalchemy import inspect
-        insp = inspect(engine)
-        columns = [c['name'] for c in insp.get_columns("leads")]
-        return {"columns": columns, "run_id_exists": "run_id" in columns}
+        query = db.query(LeadModel)
+        if bucket:
+            query = query.filter(LeadModel.bucket == bucket)
+        
+        # Priority Filter: Run ID (Strict)
+        if run_id:
+            query = query.filter(LeadModel.run_id == run_id)
+        elif created_after:
+            query = query.filter(LeadModel.created_at >= created_after)
+            
+        leads = query.order_by(LeadModel.created_at.desc()).offset(skip).limit(limit).all()
+        return leads
     except Exception as e:
-        return {"error": str(e)}
+        import traceback
+        traceback.print_exc()
+        # Return detailed error so dashboard can show it
+        raise HTTPException(status_code=500, detail=f"DB Error: {str(e)}")
 
 # Serve Assets
 try:
@@ -134,22 +152,6 @@ class LeadBase(BaseModel):
 
     class Config:
         from_attributes = True
-
-@app.get("/leads", response_model=List[LeadBase])
-@limiter.limit("60/minute")
-async def read_leads(request: Request, skip: int = 0, limit: int = 100, bucket: Optional[str] = None, run_id: Optional[str] = None, created_after: Optional[datetime] = None, db: Session = Depends(get_db)):
-    query = db.query(LeadModel)
-    if bucket:
-        query = query.filter(LeadModel.bucket == bucket)
-    
-    # Priority Filter: Run ID (Strict)
-    if run_id:
-        query = query.filter(LeadModel.run_id == run_id)
-    elif created_after:
-        query = query.filter(LeadModel.created_at >= created_after)
-        
-    leads = query.order_by(LeadModel.created_at.desc()).offset(skip).limit(limit).all()
-    return leads
 
 @app.get("/leads/stats")
 async def read_stats(db: Session = Depends(get_db)):
