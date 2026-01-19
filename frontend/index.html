@@ -513,23 +513,6 @@
                         Open on X <i data-lucide="external-link" class="w-3 h-3 inline ml-0.5"></i>
                     </button>
                 `;
-                        
-                        <p class="text-sm text-gray-400 line-clamp-1 mb-2">${desc}</p>
-                        
-                        <div class="flex items-center gap-4 text-xs text-gray-500">
-                             ${handle ? `<span class="flex items-center gap-1 hover:text-sky-400 transition-colors"><i data-lucide="twitter" class="w-3 h-3"></i> @${handle}</span>` : ''}
-                             ${lead.domain ? `<a href="${lead.domain}" target="_blank" class="flex items-center gap-1 hover:text-white transition-colors truncate max-w-[150px]"><i data-lucide="link" class="w-3 h-3"></i> ${lead.domain.replace('https://', '')}</a>` : ''}
-                             <span class="text-gray-600 flex items-center gap-1"><i data-lucide="clock" class="w-3 h-3"></i> ${timeAgo(lead.created_at)}</span>
-                        </div>
-                    </div >
-
-                    <div class="flex flex-col gap-2 shrink-0">
-                        <a href="${handle ? `https://x.com/${handle}` : '#'}" ${handle ? 'target="_blank"' : ''}
-                            class="px-3 py-1.5 rounded-lg bg-white text-black font-semibold text-xs flex items-center gap-2 hover:opacity-90 transition-opacity whitespace-nowrap ${!handle ? 'opacity-50 cursor-not-allowed' : ''}">
-                            Open on X <i data-lucide="external-link" class="w-3 h-3"></i>
-                        </a>
-                    </div>
-                `;
                 list.appendChild(el);
             });
             lucide.createIcons();
