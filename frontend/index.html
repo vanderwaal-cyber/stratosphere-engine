@@ -266,35 +266,42 @@
             if (btn) btn.onclick = handleGenerate;
         });
 
-        let lastRunTime = null; // Store when the LAST run started
+        let currentRunId = null;
+        let lastRunTime = null; // Legacy Fallback
+
+        function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
 
         async function handleGenerate() {
             setLoadingState(true);
-            lastRunTime = new Date().toISOString(); // Start tracking "New" from NOW
+            currentRunId = generateUUID(); // NEW: Unique Ticket for this run
+            lastRunTime = new Date().toISOString();
 
             // Clear Immediately
             document.getElementById('lead-list').innerHTML = `
                 <div class="flex flex-col items-center justify-center py-20 animate-pulse">
                     <div class="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin mb-4"></div>
                     <p class="text-gray-400 text-sm">Scanning signal...</p>
+                    <p class="text-xs text-gray-600 font-mono mt-1">ID: ${currentRunId.substring(0, 8)}</p>
                 </div>`;
 
             try {
                 const modeSelect = document.getElementById('run-mode');
                 const mode = modeSelect ? modeSelect.value : 'fresh';
 
-                // If Refresh mode, we might want to see old leads? 
-                // But user requested specific behavior. Let's assume strict for Fresh.
-                if (mode === 'fresh') {
-                    // lastRunTime is already set
-                } else {
-                    lastRunTime = null; // Show all if refreshing
+                if (mode !== 'fresh') {
+                    currentRunId = null; // Show all for refresh
+                    lastRunTime = null;
                 }
 
                 const res = await fetch(`${API_URL}/pipeline/run`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ mode: mode })
+                    body: JSON.stringify({ mode: mode, run_id: currentRunId })
                 });
                 const data = await res.json();
                 if (data.status === 'busy') alert("Engine is already running!");
@@ -306,8 +313,8 @@
                 console.error(e);
                 alert(`Failed to start engine: ${e.message || e}`);
                 setLoadingState(false);
-                lastRunTime = null;
-                fetchData(); // Restore old list if failed
+                currentRunId = null;
+                fetchData();
             }
         }
 
@@ -394,8 +401,10 @@
                 let url = `${API_URL}/api/leads?limit=100`;
                 if (currentFilter) url += `&bucket=${currentFilter}`;
 
-                // Strict Freshness Filter
-                if (lastRunTime) {
+                // Strict Freshness Filter (Priority: Run ID)
+                if (currentRunId) {
+                    url += `&run_id=${currentRunId}`;
+                } else if (lastRunTime) {
                     url += `&created_after=${lastRunTime}`;
                 }
 
