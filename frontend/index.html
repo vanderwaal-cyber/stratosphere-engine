@@ -649,12 +649,21 @@
             }
         }
 
+        function openDM(handle, text) {
+            if (!handle) return showToast("No Twitter handle found", "error");
+            navigator.clipboard.writeText(text).then(() => {
+                showToast("Icebreaker Copied! Opening Profile...", "success");
+                window.open(`https://twitter.com/${handle.replace('@', '')}`, '_blank');
+            });
+        }
+
         function renderAnalysisBlock(lead) {
             if (!lead.ai_analysis) return '';
 
             const analysisHtml = lead.ai_analysis.split('\n').map(line => `<div class="mb-1">${line}</div>`).join('');
-            const encodedIcebreaker = encodeURIComponent(lead.icebreaker || "");
-            const dmLink = lead.icebreaker ? `https://twitter.com/intent/tweet?text=${encodedIcebreaker}` : '#';
+
+            // Escape special chars for the onclick handler
+            const safeIcebreaker = (lead.icebreaker || "").replace(/'/g, "\\'").replace(/\n/g, " ");
 
             return `
                 <div class="mt-4 p-4 rounded-xl bg-violet-500/10 border border-violet-500/20 text-xs text-violet-200">
@@ -669,9 +678,9 @@
 
                     <!-- CRM ACTION BAR -->
                     <div class="mt-4 flex items-center gap-2 border-t border-white/5 pt-3">
-                         <a href="${dmLink}" target="_blank" onclick="updateStatus(${lead.id}, 'Contacted', 'CONTACTED')" class="flex-1 px-3 py-2 bg-white text-black font-bold rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-white/5">
+                         <button onclick="openDM('${lead.twitter_handle || ''}', '${safeIcebreaker}'); updateStatus(${lead.id}, 'Contacted', 'CONTACTED')" class="flex-1 px-3 py-2 bg-white text-black font-bold rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-white/5">
                              <i data-lucide="send" class="w-3 h-3"></i> Send DM
-                         </a>
+                         </button>
                          <button onclick="updateStatus(${lead.id}, 'Qualified', 'READY_TO_DM')" class="px-3 py-2 bg-emerald-500/20 text-emerald-300 font-bold rounded-lg hover:bg-emerald-500/30 transition-colors border border-emerald-500/30" title="Qualify Lead">
                              <i data-lucide="check" class="w-4 h-4"></i>
                          </button>
