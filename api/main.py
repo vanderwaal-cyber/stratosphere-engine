@@ -73,8 +73,8 @@ class LeadBase(BaseModel):
     domain: Optional[str] = None
     funding_info: Optional[str] = None
     description: Optional[str] = None
-    status: str
-    score: int
+    status: Optional[str] = "New"  # Loosened
+    score: Optional[int] = 0       # Loosened
     bucket: Optional[str] = None
     source_counts: int = 1
     profile_image_url: Optional[str] = None

@@ -332,7 +332,8 @@
             </div>
 
             <script>
-                const API_URL = window.location.origin;
+                // Use relative path for maximum compatibility (works on Railway, Vercel, Localhost)
+                const API_URL = "";
                 let isRunning = false;
                 let pollingInterval = null;
                 let currentFilter = '';
