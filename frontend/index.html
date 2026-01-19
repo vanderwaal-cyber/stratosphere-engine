@@ -460,6 +460,11 @@
                     if (pollingInterval) return;
                     pollStatus();
                     pollingInterval = setInterval(pollStatus, 2000);
+
+                    // Auto-Refresh Heartbeat (30s)
+                    setInterval(() => {
+                        if (!isRunning) fetchData();
+                    }, 30000);
                 }
 
                 async function pollStatus() {
@@ -491,8 +496,6 @@
                                     alert("System Alert: " + (state.current_step || "Unknown Error"));
                                 }
                             }
-                            clearInterval(pollingInterval);
-                            pollingInterval = null;
                         }
                     } catch (e) {
                         console.warn("Poll missing", e);
@@ -550,16 +553,13 @@
 
                         // Leads
                         let url = `${API_URL}/api/leads?limit=500`;
-                        if (currentFilter) url += `&bucket=${currentFilter}`;
-
-                        console.log("Fetching Leads URL:", url); // DEBUG
+                        // Fix: Ensure empty filter gets ALL leads
+                        if (currentFilter && currentFilter.length > 0) url += `&bucket=${currentFilter}`;
 
                         const leadsRes = await fetch(url);
                         if (!leadsRes.ok) throw new Error("Signal Lost");
 
                         const leads = await leadsRes.json();
-                        console.log("Leads Data Received:", leads); // DEBUG
-
                         renderLeads(leads);
                     } catch (e) {
                         console.error("Fetch Error", e);
@@ -579,7 +579,7 @@
                     // Helper for animation
                     const anim = (id, val) => {
                         const el = $(id);
-                        if (el) animateValue(id, parseInt(el.textContent) || 0, val || 0, 800);
+                        if (el && el.textContent != val) animateValue(id, parseInt(el.textContent) || 0, val || 0, 800);
                     };
                     anim('stat-total', stats.total_leads);
                     anim('stat-ready', stats.ready_to_dm);
@@ -613,32 +613,46 @@
                 function renderLeads(leads) {
                     const list = $('lead-list');
                     if (!list) return;
-                    list.innerHTML = '';
 
                     if (!leads || leads.length === 0) {
                         list.innerHTML = `
-                    <div class="flex flex-col items-center justify-center py-20 text-gray-500 opacity-50">
-                        <div class="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mb-4 border border-white/5">
-                            <i data-lucide="radar" class="w-8 h-8 text-gray-600"></i>
-                        </div>
-                        <p class="text-xs font-bold uppercase tracking-widest">No Signals Detected</p>
-                    </div>`;
+                            <div class="flex flex-col items-center justify-center py-20 text-gray-500 opacity-50">
+                                <div class="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mb-4 border border-white/5">
+                                    <i data-lucide="radar" class="w-8 h-8 text-gray-600"></i>
+                                </div>
+                                <p class="text-xs font-bold uppercase tracking-widest">No Signals Detected</p>
+                            </div>`;
                         if (window.lucide) lucide.createIcons();
                         return;
                     }
 
-                    // Fragment for performance
-                    const fragment = document.createDocumentFragment();
+                    // --- SMOOTH DIFFING ---
+                    // 1. Index existing
+                    const existingMap = new Map();
+                    list.querySelectorAll('[data-id]').forEach(el => existingMap.set(parseInt(el.dataset.id), el));
 
+                    // 2. Build or Update
                     leads.forEach((lead, index) => {
-                        const el = document.createElement('div');
-                        // Bento Card Style + Animation
-                        el.className = `p-5 rounded-2xl glass-card flex items-start gap-4 group hover:bg-white/5 transition-all relative overflow-hidden`;
-                        el.style.animationDelay = `${Math.min(index * 0.05, 1.0)}s`; // Cap delay
+                        let el = existingMap.get(lead.id);
+                        let isNew = false;
+
+                        if (!el) {
+                            isNew = true;
+                            el = document.createElement('div');
+                            el.dataset.id = lead.id;
+                            // Add 'w-full' for mobile fix
+                            el.className = `w-full p-5 rounded-2xl glass-card flex items-start gap-4 group hover:bg-white/5 transition-all relative overflow-hidden`;
+                            // Only animate NEW items
+                            el.classList.add('opacity-0', 'snap-fade-in');
+                            el.style.animationDelay = `${Math.min(index * 0.05, 1.0)}s`;
+                        }
 
                         // Hot Glow
-                        if ((lead.score || 0) > 40) {
+                        const isHot = (lead.score || 0) > 40;
+                        if (isHot) {
                             el.classList.add('border-orange-500/20', 'bg-orange-500/5');
+                        } else {
+                            el.classList.remove('border-orange-500/20', 'bg-orange-500/5');
                         }
 
                         // Badges
@@ -652,7 +666,7 @@
                         }
 
                         // Hot Score
-                        if ((lead.score || 0) > 40) {
+                        if (isHot) {
                             badges = `<span class="bg-orange-500/10 text-orange-400 border border-orange-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1"><i data-lucide="flame" class="w-3 h-3"></i> ${lead.score}</span>` + badges;
                         }
 
@@ -660,32 +674,42 @@
                         const pfp = lead.profile_image_url || (handle ? `https://unavatar.io/twitter/${handle}` : `https://ui-avatars.com/api/?name=${lead.project_name}&background=1e293b&color=fff`);
                         let desc = (lead.description || "No description available.").replace(/["{}]/g, "");
 
-                        // Template
-                        el.innerHTML = `
-                    <div class="relative w-12 h-12 shrink-0 group-hover:scale-105 transition-transform duration-500 ease-out">
-                        <img src="${pfp}" alt="Icon" class="w-full h-full rounded-xl object-cover border border-white/10 shadow-lg bg-gray-900" loading="lazy" onerror="this.src='https://ui-avatars.com/api/?name=?'">
-                        ${lead.platform === 'x' ? '<div class="absolute -bottom-1 -right-1 w-5 h-5 bg-black rounded-full flex items-center justify-center border border-gray-800"><i data-lucide="twitter" class="w-3 h-3 text-white"></i></div>' : ''}
-                    </div>
-                    
-                    <div class="flex-1 min-w-0 z-10">
-                        <div class="flex items-center justify-between mb-1.5">
-                            <h3 class="font-bold text-white text-base truncate pr-2 group-hover:text-violet-300 transition-colors">${lead.project_name}</h3>
-                            <div class="flex items-center gap-2 shrink-0">${badges}</div>
-                        </div>
-                        
-                        <p class="text-xs text-gray-400 line-clamp-2 leading-relaxed font-mono opacity-80 group-hover:opacity-100 transition-opacity mb-3">${desc}</p>
-                        
-                        <div class="flex items-center gap-3 opacity-60 group-hover:opacity-100 transition-opacity duration-300">
-                             ${lead.domain ? `<a href="${lead.domain}" target="_blank" class="text-[10px] font-bold text-white hover:text-violet-300 flex items-center gap-1"><i data-lucide="globe" class="w-3 h-3"></i> Web</a>` : ''}
-                             ${handle ? `<a href="https://twitter.com/${handle}" target="_blank" class="text-[10px] font-bold text-[#1DA1F2] hover:text-white flex items-center gap-1"><i data-lucide="twitter" class="w-3 h-3"></i> @${handle}</a>` : ''}
-                             <span class="ml-auto text-[10px] text-gray-600 font-mono">${timeAgo(lead.created_at)}</span>
-                        </div>
-                    </div>
-                `;
-                        fragment.appendChild(el);
+                        const html = `
+                            <div class="relative w-12 h-12 shrink-0 group-hover:scale-105 transition-transform duration-500 ease-out">
+                                <img src="${pfp}" alt="Icon" class="w-full h-full rounded-xl object-cover border border-white/10 shadow-lg bg-gray-900" loading="lazy" onerror="this.src='https://ui-avatars.com/api/?name=?'">
+                                ${lead.platform === 'x' ? '<div class="absolute -bottom-1 -right-1 w-5 h-5 bg-black rounded-full flex items-center justify-center border border-gray-800"><i data-lucide="twitter" class="w-3 h-3 text-white"></i></div>' : ''}
+                            </div>
+                            
+                            <div class="flex-1 min-w-0 z-10">
+                                <div class="flex items-center justify-between mb-1.5">
+                                    <h3 class="font-bold text-white text-base truncate pr-2 group-hover:text-violet-300 transition-colors">${lead.project_name}</h3>
+                                    <div class="flex items-center gap-2 shrink-0">${badges}</div>
+                                </div>
+                                
+                                <p class="text-xs text-gray-400 line-clamp-2 leading-relaxed font-mono opacity-80 group-hover:opacity-100 transition-opacity mb-3">${desc}</p>
+                                
+                                <div class="flex items-center gap-3 opacity-60 group-hover:opacity-100 transition-opacity duration-300">
+                                     ${lead.domain ? `<a href="${lead.domain}" target="_blank" class="text-[10px] font-bold text-white hover:text-violet-300 flex items-center gap-1"><i data-lucide="globe" class="w-3 h-3"></i> Web</a>` : ''}
+                                     ${handle ? `<a href="https://twitter.com/${handle}" target="_blank" class="text-[10px] font-bold text-[#1DA1F2] hover:text-white flex items-center gap-1"><i data-lucide="twitter" class="w-3 h-3"></i> @${handle}</a>` : ''}
+                                     <span class="ml-auto text-[10px] text-gray-600 font-mono">${timeAgo(lead.created_at)}</span>
+                                </div>
+                            </div>
+                        `;
+
+                        // Only update HTML if changed (basic check)
+                        if (el.innerHTML !== html) el.innerHTML = html;
+
+                        if (isNew) {
+                            list.appendChild(el);
+                        }
                     });
 
-                    list.appendChild(fragment);
+                    // 3. Remove Stale
+                    const currentIds = new Set(leads.map(l => l.id));
+                    existingMap.forEach((el, id) => {
+                        if (!currentIds.has(id)) el.remove();
+                    });
+
                     if (window.lucide) lucide.createIcons();
                 }
 
