@@ -40,11 +40,17 @@ class XKeywordCollector(BaseCollector):
                     name = title.split(':')[0].split('|')[0].strip()
                     if len(name) > 30: continue # Likely not a name
                     
+                    # Score it
+                    score = 10 # Base
+                    full_text = title.lower()
+                    if "announced" in full_text or "launch" in full_text: score += 20
+                    if "raise" in full_text or "backed" in full_text: score += 30
+                    
                     # Basic Lead
                     lead = RawLead(
                         name=name,
                         source="x_signal_search",
-                        extra_data={"query": q, "context": title}
+                        extra_data={"query": q, "context": title, "activity_score": score}
                     )
                     
                     if "mirror.xyz" in link or "medium.com" in link:
