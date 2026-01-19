@@ -43,6 +43,28 @@ async def startup_db():
                 # 3. Assume it exists or something else is wrong
                 print(f"Migration Note: {e}")
 
+# Schemas
+class LeadBase(BaseModel):
+    id: int
+    project_name: str
+    twitter_handle: Optional[str] = None
+    domain: Optional[str] = None
+    funding_info: Optional[str] = None
+    description: Optional[str] = None
+    status: str
+    score: int
+    bucket: Optional[str] = None
+    source_counts: int = 1
+    telegram_url: Optional[str] = None
+    discord_url: Optional[str] = None
+    email: Optional[str] = None
+    reject_reason: Optional[str] = None
+    created_at: Optional[datetime] = None
+    run_id: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
 @app.get("/leads", response_model=List[LeadBase])
 @limiter.limit("60/minute")
 async def read_leads(request: Request, skip: int = 0, limit: int = 100, bucket: Optional[str] = None, run_id: Optional[str] = None, created_after: Optional[datetime] = None, db: Session = Depends(get_db)):
@@ -131,27 +153,7 @@ def read_dashboard():
             return f.read()
     return "Dashboard file not found."
 
-# Schemas
-class LeadBase(BaseModel):
-    id: int
-    project_name: str
-    twitter_handle: Optional[str] = None
-    domain: Optional[str] = None
-    funding_info: Optional[str] = None
-    description: Optional[str] = None
-    status: str
-    score: int
-    bucket: Optional[str] = None
-    source_counts: int = 1
-    telegram_url: Optional[str] = None
-    discord_url: Optional[str] = None
-    email: Optional[str] = None
-    reject_reason: Optional[str] = None
-    created_at: Optional[datetime] = None
-    run_id: Optional[str] = None
 
-    class Config:
-        from_attributes = True
 
 @app.get("/leads/stats")
 async def read_stats(db: Session = Depends(get_db)):
