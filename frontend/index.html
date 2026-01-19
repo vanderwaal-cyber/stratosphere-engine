@@ -38,133 +38,131 @@
             font-family: 'Inter', sans-serif;
             background-color: #09090b;
             color: #fff;
+            overflow-x: hidden;
+            /* Prevent horizontal scroll on mobile */
         }
 
         .glass {
-            background: rgba(24, 24, 27, 0.6);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            background: rgba(24, 24, 27, 0.4);
+            /* More transparent */
+            backdrop-filter: blur(16px);
+            /* Stronger blur */
+            -webkit-backdrop-filter: blur(16px);
             border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
         }
 
         .glass-card {
-            background: rgba(39, 39, 42, 0.4);
-            backdrop-filter: blur(8px);
+            background: rgba(39, 39, 42, 0.3);
+            backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.05);
-            transition: all 0.3s ease;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            /* Snap feel */
         }
 
         .glass-card:hover {
-            transform: translateY(-2px);
-            border-color: rgba(139, 92, 246, 0.3);
-            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+            transform: translateY(-2px) scale(1.01);
+            border-color: rgba(139, 92, 246, 0.4);
+            box-shadow: 0 10px 40px -10px rgba(139, 92, 246, 0.15);
         }
 
-        ::-webkit-scrollbar {
-            width: 6px;
+        .snap-fade-in {
+            opacity: 0;
+            animation: snapFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
-        ::-webkit-scrollbar-track {
-            background: #09090b;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #27272a;
-            border-radius: 3px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #3f3f46;
-        }
-
-        @keyframes fadeSlideUp {
+        @keyframes snapFade {
             from {
                 opacity: 0;
-                transform: translateY(20px);
+                transform: translateY(15px) scale(0.98);
             }
 
             to {
                 opacity: 1;
-                transform: translateY(0);
+                transform: translateY(0) scale(1);
             }
+        }
+
+        /* Mobile Scrollbar hiding for clean look */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
         }
     </style>
 </head>
 
 <body
-    class="min-h-screen bg-[url('https://grainy-gradients.vercel.app/noise.svg')] bg-fixed text-gray-200 selection:bg-primary selection:text-white">
+    class="min-h-screen bg-[url('https://grainy-gradients.vercel.app/noise.svg')] bg-fixed text-gray-200 selection:bg-primary selection:text-white pb-20 md:pb-0">
 
     <!-- Top Glow -->
-    <div class="fixed top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-accent to-primary opacity-50 blur-sm">
+    <div
+        class="fixed top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-accent to-primary opacity-50 blur-sm z-50">
     </div>
 
     <!-- Cover Image -->
-    <div class="relative w-full h-48 md:h-64 bg-surfaceHighlight overflow-hidden">
+    <div class="relative w-full h-40 md:h-64 bg-surfaceHighlight overflow-hidden">
         <img src="/assets/cover.jpg" class="w-full h-full object-cover opacity-60" alt="Cover"
             onerror="this.style.display='none'">
         <div class="absolute inset-0 bg-gradient-to-b from-transparent via-background/20 to-background"></div>
     </div>
 
-    <div class="max-w-7xl mx-auto px-6 relative z-10 -mt-20">
+    <div class="max-w-7xl mx-auto px-4 md:px-6 relative z-10 -mt-16 md:-mt-20">
 
-        <!-- HEADER (Profile Style) -->
-        <header class="flex flex-col md:flex-row items-end justify-between gap-6 mb-12">
-            <div class="flex items-end gap-6">
+        <!-- HEADER (Responsive) -->
+        <header
+            class="flex flex-col md:flex-row items-center md:items-end justify-between gap-6 mb-8 md:mb-12 text-center md:text-left">
+            <div class="flex flex-col md:flex-row items-center md:items-end gap-4 md:gap-6">
                 <!-- PFP -->
-                <div class="relative group">
+                <div class="relative group shrink-0">
                     <div
                         class="absolute -inset-1 bg-gradient-to-r from-primary to-accent rounded-2xl blur opacity-30 group-hover:opacity-70 transition duration-500">
                     </div>
                     <img id="logo-img" src="/assets/brand_logo.jpg" alt="Stratosphere"
-                        class="relative w-32 h-32 rounded-2xl border-4 border-background shadow-2xl object-cover bg-background">
+                        class="relative w-24 h-24 md:w-32 md:h-32 rounded-2xl border-4 border-background shadow-2xl object-cover bg-background">
                     <div id="status-indicator"
-                        class="absolute bottom-2 right-2 w-4 h-4 rounded-full bg-emerald-500 border-2 border-background animate-pulse"
+                        class="absolute bottom-2 right-2 w-3 h-3 md:w-4 md:h-4 rounded-full bg-emerald-500 border-2 border-background animate-pulse"
                         title="System Active"></div>
                 </div>
 
                 <!-- Info -->
-                <div class="pb-2">
-                    <h1 class="text-4xl font-bold text-white tracking-tight mb-1">Stratosphere <span
-                            class="text-primary font-light">CT Radar</span></h1>
-                    <div class="flex items-center gap-3 text-sm text-gray-400">
+                <div class="pb-1 md:pb-2">
+                    <h1 class="text-3xl md:text-4xl font-bold text-white tracking-tight mb-2 md:mb-1">Stratosphere <span
+                            class="text-primary font-light block md:inline">CT Radar</span></h1>
+                    <div
+                        class="flex flex-wrap justify-center md:justify-start items-center gap-2 md:gap-3 text-xs md:text-sm text-gray-400">
                         <span
-                            class="px-2 py-0.5 rounded text-xs font-bold bg-orange-500/20 text-orange-300 border border-orange-500/30">v3.5
+                            class="px-2 py-0.5 rounded text-[10px] md:text-xs font-bold bg-orange-500/20 text-orange-300 border border-orange-500/30">v3.5
                             CT Search</span>
-                        <span>•</span>
-                        <p id="status-text" class="font-medium text-emerald-400">System Active</p>
-                        <span>•</span>
-                        <span id="last-updated" class="text-xs text-gray-500">Updated: Just now</span>
+                        <span class="hidden md:inline">•</span>
+                        <p id="status-text" class="font-medium text-emerald-400 hidden md:block">System Active</p>
+                        <span class="hidden md:inline">•</span>
+                        <span id="last-updated" class="text-gray-500">Updated: Just now</span>
                     </div>
                 </div>
             </div>
 
             <!-- Actions -->
-            <div class="flex items-center gap-3 pb-2">
+            <div class="flex flex-wrap justify-center items-center gap-2 md:gap-3 pb-0 md:pb-2 w-full md:w-auto">
                 <div id="loading-indicator"
-                    class="hidden flex items-center gap-3 px-4 py-2 rounded-full bg-surfaceHighlight/50 border border-white/5">
-                    <div class="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                    <span id="loading-text" class="text-sm text-gray-300">Scraping...</span>
+                    class="hidden flex items-center gap-2 px-3 py-1.5 rounded-full bg-surfaceHighlight/50 border border-white/5">
+                    <div class="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                    <span id="loading-text" class="text-xs text-gray-300">Scanning...</span>
                 </div>
 
                 <button onclick="stopPipeline()" id="btn-stop"
-                    class="hidden px-4 py-2 rounded-lg text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-900/20 transition-colors border border-transparent hover:border-red-900/30">
-                    Stop Run
-                </button>
-
-                <!-- Run Mode / Filter -->
-                <select id="run-mode"
-                    class="bg-surfaceHighlight border border-white/5 text-gray-300 text-sm rounded-lg px-3 py-2.5 outline-none focus:border-primary/50 transition-colors cursor-pointer hover:bg-white/5 hidden">
-                    <option value="all">View All (3k+)</option>
-                    <option value="recent">Latest Run Only</option>
-                </select>
+                    class="hidden px-3 py-2 rounded-lg text-xs font-medium text-red-400 bg-red-900/10 border border-red-500/20">Stop</button>
 
                 <button onclick="window.open('/leads/export?run_id=' + (currentRunId || ''), '_blank')"
-                    class="px-4 py-2.5 rounded-lg bg-white/5 text-gray-300 font-medium text-sm hover:bg-white/10 hover:text-white transition-all border border-white/5 active:scale-95">
+                    class="p-2.5 rounded-lg bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white border border-white/5 active:scale-95 transition-all">
                     <i data-lucide="download" class="w-4 h-4"></i>
                 </button>
 
                 <button id="btn-generate" onclick="handleGenerate()"
-                    class="relative group px-6 py-2.5 rounded-lg bg-white text-black font-semibold text-sm shadow-lg shadow-white/5 hover:shadow-primary/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden">
+                    class="relative group px-5 py-2.5 rounded-lg bg-white text-black font-bold text-sm shadow-xl shadow-primary/10 hover:shadow-primary/30 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden w-full md:w-auto flex justify-center">
                     <span class="relative z-10 flex items-center gap-2">
                         <i data-lucide="radar" class="w-4 h-4 text-primary"></i>
                         Scan CT Radar
@@ -177,76 +175,86 @@
         </header>
 
         <!-- STATS GRID -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8">
             <!-- Total Discovered -->
-            <div class="glass p-6 rounded-xl flex items-start justify-between relative overflow-hidden group">
+            <div class="glass p-5 md:p-6 rounded-xl flex items-start justify-between relative overflow-hidden group">
                 <div>
-                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Total Discovered</p>
+                    <p class="text-[10px] md:text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Total
+                        Discovered</p>
                     <h2 id="stat-total"
-                        class="text-4xl font-bold text-white group-hover:text-primary transition-colors">0</h2>
+                        class="text-3xl md:text-4xl font-bold text-white group-hover:text-primary transition-colors">0
+                    </h2>
                 </div>
                 <div
-                    class="p-3 bg-white/5 rounded-lg border border-white/5 group-hover:border-primary/20 transition-colors">
+                    class="p-2.5 md:p-3 bg-white/5 rounded-lg border border-white/5 group-hover:border-primary/20 transition-colors">
                     <i data-lucide="database"
-                        class="w-6 h-6 text-gray-400 group-hover:text-white transition-colors"></i>
+                        class="w-5 h-5 md:w-6 md:h-6 text-gray-400 group-hover:text-white transition-colors"></i>
                 </div>
             </div>
 
             <!-- Ready to DM -->
-            <div class="glass p-6 rounded-xl flex items-start justify-between relative overflow-hidden group">
+            <div class="glass p-5 md:p-6 rounded-xl flex items-start justify-between relative overflow-hidden group">
                 <div>
-                    <p class="text-xs font-medium text-emerald-500/80 uppercase tracking-wider mb-1">Ready to DM</p>
+                    <p class="text-[10px] md:text-xs font-medium text-emerald-500/80 uppercase tracking-wider mb-1">
+                        Ready to DM</p>
                     <h2 id="stat-ready"
-                        class="text-4xl font-bold text-white group-hover:text-emerald-400 transition-colors">0</h2>
+                        class="text-3xl md:text-4xl font-bold text-white group-hover:text-emerald-400 transition-colors">
+                        0</h2>
                 </div>
                 <div
-                    class="p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/20 group-hover:border-emerald-500/40 transition-colors">
-                    <i data-lucide="send" class="w-6 h-6 text-emerald-400"></i>
+                    class="p-2.5 md:p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/20 group-hover:border-emerald-500/40 transition-colors">
+                    <i data-lucide="send" class="w-5 h-5 md:w-6 md:h-6 text-emerald-400"></i>
                 </div>
             </div>
 
             <!-- Needs AI -->
-            <div class="glass p-6 rounded-xl flex items-start justify-between relative overflow-hidden group">
+            <div class="glass p-5 md:p-6 rounded-xl flex items-start justify-between relative overflow-hidden group">
                 <div>
-                    <p class="text-xs font-medium text-amber-500/80 uppercase tracking-wider mb-1">Needs AI / Alt</p>
+                    <p class="text-[10px] md:text-xs font-medium text-amber-500/80 uppercase tracking-wider mb-1">Needs
+                        AI / Alt</p>
                     <h2 id="stat-alt"
-                        class="text-4xl font-bold text-white group-hover:text-amber-400 transition-colors">0</h2>
+                        class="text-3xl md:text-4xl font-bold text-white group-hover:text-amber-400 transition-colors">0
+                    </h2>
                 </div>
                 <div
-                    class="p-3 bg-amber-500/10 rounded-lg border border-amber-500/20 group-hover:border-amber-500/40 transition-colors">
-                    <i data-lucide="bot" class="w-6 h-6 text-amber-400"></i>
+                    class="p-2.5 md:p-3 bg-amber-500/10 rounded-lg border border-amber-500/20 group-hover:border-amber-500/40 transition-colors">
+                    <i data-lucide="bot" class="w-5 h-5 md:w-6 md:h-6 text-amber-400"></i>
                 </div>
             </div>
         </div>
 
-        <!-- MAIN FEED -->
-        <div class="glass rounded-2xl border border-white/5 min-h-[600px] flex flex-col">
+        <!-- MAIN FEED - FIXED HEIGHT SCROLLABLE -->
+        <!-- Logic: On desktop it's fixed high, on mobile it takes remaining space but has minimum height -->
+        <div class="glass rounded-2xl border border-white/5 flex flex-col h-[calc(100vh-380px)] min-h-[400px]">
             <!-- Feed Header & Filters -->
-            <div class="p-6 border-b border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div
+                class="p-4 md:p-6 border-b border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
                 <div class="flex items-center gap-3">
                     <h3 class="text-lg font-semibold text-white">Lead Feed</h3>
                     <!-- Progress Bar -->
-                    <div id="progress-container" class="hidden w-32 h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                    <div id="progress-container"
+                        class="hidden w-24 md:w-32 h-1.5 bg-gray-800 rounded-full overflow-hidden">
                         <div id="progress-bar" class="h-full bg-primary transition-all duration-500 w-0"></div>
                     </div>
                 </div>
 
                 <!-- Segmented Control -->
-                <div class="flex p-1 bg-black/40 rounded-lg border border-white/5">
+                <div
+                    class="flex p-1 bg-black/40 rounded-lg border border-white/5 w-full md:w-auto overflow-x-auto no-scrollbar">
                     <button onclick="setFilter('READY_TO_DM')" id="tab-ready"
-                        class="flex-1 px-4 py-1.5 text-sm font-medium rounded-md text-gray-400 hover:text-white transition-colors">Ready
+                        class="flex-1 whitespace-nowrap px-3 md:px-4 py-1.5 text-xs md:text-sm font-medium rounded-md text-gray-400 hover:text-white transition-colors">Ready
                         to DM</button>
                     <button onclick="setFilter('NEEDS_ALT_OUTREACH')" id="tab-ai"
-                        class="flex-1 px-4 py-1.5 text-sm font-medium rounded-md text-gray-400 hover:text-white transition-colors">AI
+                        class="flex-1 whitespace-nowrap px-3 md:px-4 py-1.5 text-xs md:text-sm font-medium rounded-md text-gray-400 hover:text-white transition-colors">AI
                         Needed</button>
                     <button onclick="setFilter('')" id="tab-all"
-                        class="flex-1 px-4 py-1.5 text-sm font-medium rounded-md bg-surfaceHighlight text-white shadow-sm border border-white/10 transition-all">All
+                        class="flex-1 whitespace-nowrap px-3 md:px-4 py-1.5 text-xs md:text-sm font-medium rounded-md bg-surfaceHighlight text-white shadow-sm border border-white/10 transition-all">All
                         Leads</button>
                 </div>
             </div>
 
-            <!-- Lead List -->
-            <div id="lead-list" class="flex-1 p-4 space-y-3 overflow-y-auto max-h-[800px]"></div>
+            <!-- Lead List SCROLLABLE AREA -->
+            <div id="lead-list" class="flex-1 p-3 md:p-4 space-y-3 overflow-y-auto custom-scrollbar relative"></div>
 
             <!-- Footer -->
             <div class="p-4 border-t border-white/5 text-center text-xs text-gray-600">
@@ -518,10 +526,14 @@
             }
             leads.forEach((lead, index) => {
                 const el = document.createElement('div');
-                el.style.animation = `fadeSlideUp 0.5s ease forwards ${index * 0.05}s`;
+                // Use new Snap Animation Class with staggered delay in style
+                el.className = `p-5 rounded-xl glass-card flex items-start gap-4 group opacity-0 snap-fade-in`;
+                el.style.animationDelay = `${index * 0.05}s`;
+
                 // Add border or glow for high score
                 const isHot = (lead.score || 0) > 40;
-                el.className = `p-5 rounded-xl glass-card flex items-start gap-4 transition-colors group opacity-0 ${isHot ? 'border-orange-500/30 bg-orange-900/10' : 'hover:bg-white/5'}`;
+                if (isHot) el.classList.add('border-orange-500/30', 'bg-orange-900/10');
+                else el.classList.add('hover:bg-white/5');
 
                 // Score Badge
                 let scoreBadge = '';
