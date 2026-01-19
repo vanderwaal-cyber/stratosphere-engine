@@ -111,10 +111,13 @@ class LeadBase(BaseModel):
 
 @app.get("/leads", response_model=List[LeadBase])
 @limiter.limit("60/minute")
-async def read_leads(request: Request, skip: int = 0, limit: int = 100, bucket: Optional[str] = None, db: Session = Depends(get_db)):
+async def read_leads(request: Request, skip: int = 0, limit: int = 100, bucket: Optional[str] = None, created_after: Optional[datetime] = None, db: Session = Depends(get_db)):
     query = db.query(LeadModel)
     if bucket:
         query = query.filter(LeadModel.bucket == bucket)
+    if created_after:
+        query = query.filter(LeadModel.created_at >= created_after)
+        
     leads = query.order_by(LeadModel.created_at.desc()).offset(skip).limit(limit).all()
     return leads
 

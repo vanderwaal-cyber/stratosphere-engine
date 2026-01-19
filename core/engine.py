@@ -94,12 +94,12 @@ class StratosphereEngine:
     async def _run_logic(self, mode):
         db = SessionLocal()
         try:
-            # 0. Auto-Cleanup (> 7 Days)
-            cutoff = datetime.utcnow() - timedelta(days=7)
-            deleted = db.query(Lead).filter(Lead.created_at < cutoff).delete()
-            if deleted:
-                self.logger.info(f"Cleaned up {deleted} old leads")
-                db.commit()
+            # 0. Auto-Cleanup (> 7 Days) - DISABLED to prevent re-scraping old leads
+            # cutoff = datetime.utcnow() - timedelta(days=7)
+            # deleted = db.query(Lead).filter(Lead.created_at < cutoff).delete()
+            # if deleted:
+            #     self.logger.info(f"Cleaned up {deleted} old leads")
+            #     db.commit()
 
             # 1. Collection
             self.update_state(step="Collecting", progress=10)
