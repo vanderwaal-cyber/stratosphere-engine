@@ -195,10 +195,15 @@ class StratosphereEngine:
             collectors = [
                 UniversalSearchCollector(), # The Heavy Lifter
                 GithubCollector(),          # Re-enabled with care
-                LaunchpadCollector(),
-                DeFiLlamaCollector(),
-                XKeywordCollector(),
+                # LaunchpadCollector(),      # Often blocked, keep off for now
+                # DeFiLlamaCollector(),      # Good but sparse
+                # XKeywordCollector(),       # DDG dependent
             ]
+            
+            # EMERGENCY FALLBACK: If we have found NOTHING after a few tries, load fallback data
+            from collectors.fallback_data import FALLBACK_LEADS
+            # We don't add FallbackDataCollector to the loop, we use it directly if loop yields 0.
+            
             target_leads = 50 
             max_loops = 200 
             
@@ -243,7 +248,26 @@ class StratosphereEngine:
                 # But UniversalSearchCollector is infinite by design (random queries), so it shouldn't run dry easily.
                 
                 if not found_any_in_loop:
-                    self.logger.info("Loop yielded 0 results. Pausing briefly to switch IP/Queries.")
+                    self.logger.info("Loop yielded 0 results. Checking emergency protocols.")
+                    
+                    # FALLBACK ACTIVATION: If total scraped is still 0 after loop 2, inject fallback leads
+                    if self.state["stats"]["total_scraped"] == 0 and self.state["stats"]["loops"] >= 2:
+                         self.update_state(step="Activating Emergency Fallback Data...", progress=pct)
+                         from collectors.fallback_data import FALLBACK_LEADS
+                         import random
+                         
+                         fallback_batch = random.sample(FALLBACK_LEADS, min(5, len(FALLBACK_LEADS)))
+                         for fb in fallback_batch:
+                             raw = RawLead(
+                                 name=fb["name"],
+                                 source="fallback_emergency",
+                                 website=fb["url"],
+                                 twitter_handle=fb["handle"],
+                                 extra_data={"desc": fb["desc"]}
+                             )
+                             await self._process_lead(db, raw, run_id)
+                             self.state["stats"]["total_scraped"] += 1
+                    
                     await asyncio.sleep(2)
                     
         finally:
