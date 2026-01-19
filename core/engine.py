@@ -188,112 +188,110 @@ class StratosphereEngine:
              self.state["completed_at"] = datetime.utcnow().isoformat()
              if self.stop_requested: self.update_state("done", step="Stopped by user")
 
+    def _load_rotation_state(self):
+        import json
+        import os
+        STATE_FILE = "core/niche_state.json"
+        try:
+            if os.path.exists(STATE_FILE):
+                with open(STATE_FILE, 'r') as f:
+                    return json.load(f)
+        except Exception:
+            pass
+        return {"index": 0}
+
+    def _save_rotation_state(self, index):
+        import json
+        STATE_FILE = "core/niche_state.json"
+        try:
+            with open(STATE_FILE, 'w') as f:
+                json.dump({"index": index}, f)
+        except Exception:
+            pass
+
     async def _run_collection_phase(self, mode, run_id):
         db = SessionLocal()
         try:
-            # --- CONFIGURATION ---
-            # User defined keywords + some defaults
-            KEYWORDS = [
-                "SaaS Founder", "Marketing Agency Owner", "Ecom Brand Owner", 
-                "Web3 Builder", "Solana Developer", "AI Agent Startup",
-                "Crypto VC", "DeFi Protocol Founder", "NFT Project Lead"
+            # --- NICHE SCHEDULE (28 Rotations) ---
+            NICHE_SCHEDULE = [
+                # Week 1: Crypto & Web3
+                "Solana Validators", "DeFi Protocol Leads", "NFT Market Makers", "DAO Treasurers", "Crypto VC Partners", "GameFi Developers", "Launchpad Founders",
+                # Week 2: B2B Services
+                "M&A Advisors", "Fractional CFOs", "Executive Coaches", "Logistics Directors", "HR Tech Founders", "IP Attorneys", "Supply Chain VPs",
+                # Week 3: High-Ticket Tech
+                "AI Automation Agencies", "Cybersecurity Firms", "EdTech Founders", "Fintech Startup Leads", "BioTech Executives", "CleanTech Directors", "AdTech Strategists",
+                # Week 4: Niche Agencies
+                "Solar Energy CEOs", "Medical Spa Owners", "Luxury Real Estate", "Yacht Brokerages", "Private Jet Charters", "High-End Interior Design", "Ecom Aggregators"
             ]
-            current_kw_index = 0
-            consecutive_duplicates = 0
-            MAX_DUPLICATES_BEFORE_ROTATE = 15
+            
+            # Load Persistent State
+            state_data = self._load_rotation_state()
+            current_index = state_data.get("index", 0) % len(NICHE_SCHEDULE)
+            
+            # Select Keyword for THIS Run
+            current_keyword = NICHE_SCHEDULE[current_index]
             TARGET_NEW_LEADS = 50
             
-            # Use Universal Search primarily for this targeted "Deep Dive"
             search_collector = UniversalSearchCollector()
             
-            # Other collectors ran once at start? Or mixed in? 
-            # For now, let's mix standard collectors with the targeted search
-            other_collectors = [
-                DeFiLlamaCollector(),      
-                LaunchpadCollector(),      
-                # GithubCollector(), # GitHub is less relevant for "SaaS Founder" keywords
-            ]
+            self.logger.info(f"🔎 Manual Trigger. Selected Niche: '{current_keyword}' (Index {current_index}). Target: {TARGET_NEW_LEADS}")
             
-            # STARTUP: Backfill
-            await self._backfill_enrichment(db)
+            # Update UI immediately
+            self.update_state(step=f"Scanning Niche: '{current_keyword}'", progress=0)
             
-            self.logger.info(f"🔎 Starting Deep Dive. Target: {TARGET_NEW_LEADS} New Leads.")
-            
-            # MAIN LOOP
+            # MAIN BATCH LOOP
             while self.state["stats"]["new_added"] < TARGET_NEW_LEADS:
                 if self.stop_requested: break
                 
                 self.state["stats"]["loops"] += 1
-                loop_idx = self.state["stats"]["loops"]
                 
-                # ROTATION LOGIC
-                current_keyword = KEYWORDS[current_kw_index % len(KEYWORDS)]
-                
-                # Check Rotate Condition
-                if consecutive_duplicates >= MAX_DUPLICATES_BEFORE_ROTATE:
-                    current_kw_index += 1
-                    consecutive_duplicates = 0 # Reset streak
-                    current_keyword = KEYWORDS[current_kw_index % len(KEYWORDS)]
-                    self.logger.info(f"🔄 Too many duplicates. Rotating to: {current_keyword}")
-                    # Notify UI of Rotation
-                    self.update_state(step=f"Rotating to: '{current_keyword}'...")
-                    await asyncio.sleep(2) # Visual pause for user to see the status change
-
                 # Update Progress
-                pct = min(95, int((self.state["stats"]["new_added"] / TARGET_NEW_LEADS) * 100))
-                self.update_state(step=f"Mining: '{current_keyword}' ({self.state['stats']['new_added']}/{TARGET_NEW_LEADS})", progress=pct)
+                pct = int((self.state["stats"]["new_added"] / TARGET_NEW_LEADS) * 100)
+                self.update_state(step=f"Scanning Niche: '{current_keyword}' ({self.state['stats']['new_added']}/{TARGET_NEW_LEADS})", progress=pct)
                 
-                found_any_in_loop = False
-                
-                # 1. RUN TARGETED SEARCH (High Priority)
-                try: 
-                    # Construct query with site:twitter.com to ensure profile results
-                    query = f"{current_keyword} site:twitter.com"
-                    
-                    # Pass as override
+                # Dynamic Query Construction
+                # Vary the query slightly to prevent identical requests if user clicks multiple times on same day/index
+                queries = [
+                    f'"{current_keyword}" site:twitter.com',
+                    f'"{current_keyword}" "founder" site:twitter.com',
+                    f'"{current_keyword}" "owner" site:twitter.com'
+                ]
+                query = random.choice(queries)
+
+                try:
                     leads = await search_collector.collect(query_override=[query])
-                    
                     found_count = len(leads)
                     self.state["stats"]["total_scraped"] += found_count
                     
+                    found_new_in_batch = False
+                    
                     if found_count > 0:
-                        found_any_in_loop = True
                         for raw in leads:
                             if self.state["stats"]["new_added"] >= TARGET_NEW_LEADS: break
-                            
                             is_new = await self._process_lead(db, raw, run_id)
-                            if is_new:
-                                consecutive_duplicates = 0 # Reset streak on success
-                            else:
-                                consecutive_duplicates += 1
-                                
-                    else:
-                        consecutive_duplicates += 5 # Penaltize empty results to rotate faster
+                            if is_new: found_new_in_batch = True
+
+                    if not found_new_in_batch:
+                        self.logger.info("Batch yielded no new leads. Sleeping constraints.")
+                        await asyncio.sleep(2)
                         
                 except Exception as e:
-                    self.logger.error(f"Search failed: {e}")
-                
-                 # 2. RUN STANDARD COLLECTORS (Every 3rd loop to keep fresh)
-                if loop_idx % 3 == 0: 
-                    for c in other_collectors:
-                        if self.state["stats"]["new_added"] >= TARGET_NEW_LEADS: break
-                        try:
-                            self.update_state(step=f"Checking {c.name}...")
-                            leads = await c.run(lambda **k: None) # Silent update
-                            for raw in leads: 
-                                await self._process_lead(db, raw, run_id)
-                        except: pass
-                
-                # Check outcome
-                if not found_any_in_loop:
-                    self.logger.info("Loop yielded 0 results. Checking limits.")
-                    await asyncio.sleep(2)
-                
-                # Safety Limit
-                if self.state["stats"]["loops"] > 200:
-                    self.logger.warning("Max loops reached. Stopping.")
+                    self.logger.error(f"Search Loop Error: {e}")
+                    await asyncio.sleep(1)
+
+                # Safety Limit (Prevent infinite spinning if niche is dry)
+                if self.state["stats"]["loops"] > 30: # Max 30 Search pages per click
+                    self.logger.warning(f"Batch limit reached for {current_keyword}.")
                     break
-                    
+            
+            # End of Run: Advance Cursor ONLY if we found something (or if user forced it, but usually on completion)
+            # Actually user asked: "When I click the button, pick the next keyword... used yet"
+            # So we should ALWAYS advance the cursor on a successful run to ensure "next click = different niche"
+            
+            next_index = (current_index + 1) % len(NICHE_SCHEDULE)
+            self._save_rotation_state(next_index)
+            self.logger.info(f"✅ Batch Complete. Rotated Cursor to Index {next_index}.")
+            
         finally:
             db.close()
 
