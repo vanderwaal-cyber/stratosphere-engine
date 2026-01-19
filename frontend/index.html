@@ -331,25 +331,37 @@
                 </div>
             </div>
 
-            <!-- JS Logic -->
             <script>
                 const API_URL = window.location.origin;
-                let currentFilter = '';
-                let pollingInterval = null;
                 let isRunning = false;
+                let pollingInterval = null;
+                let currentFilter = '';
+                let currentRunId = null;
+
+                // --- SAFE DOM HELPERS ---
+                const $ = (id) => document.getElementById(id);
+                const setVal = (id, val) => { const el = $(id); if (el) el.textContent = val; };
+                const setHtml = (id, html) => { const el = $(id); if (el) el.innerHTML = html; };
+                const setClass = (id, cls) => { const el = $(id); if (el) el.className = cls; };
+                const show = (id) => { const el = $(id); if (el) el.classList.remove('hidden'); };
+                const hide = (id) => { const el = $(id); if (el) el.classList.add('hidden'); };
 
                 document.addEventListener('DOMContentLoaded', () => {
-                    lucide.createIcons();
-                    const logo = document.getElementById('logo-img');
+                    // Init Icons
+                    if (window.lucide) lucide.createIcons();
+
+                    // Cache Buster for Logo
+                    const logo = $('logo-img');
                     if (logo) logo.src = '/assets/brand_logo.jpg?v=' + new Date().getTime();
+
+                    // Setup Listeners
+                    const btn = $('btn-generate');
+                    if (btn) btn.onclick = handleGenerate;
+
+                    // Initial Fetch
                     fetchData();
                     startPolling();
-                    const btn = document.getElementById('btn-generate');
-                    if (btn) btn.onclick = handleGenerate;
                 });
-
-                let currentRunId = null;
-                let lastRunTime = null; // Legacy Fallback
 
                 function generateUUID() {
                     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
@@ -359,53 +371,59 @@
                 }
 
                 async function handleGenerate() {
-                    setLoadingState(true);
-                    currentRunId = generateUUID(); // NEW: Unique Ticket for this run
-                    lastRunTime = new Date().toISOString();
+                    if (isRunning) return;
+                    setLoadingState(true, "Initializing Arrays...");
+                    currentRunId = generateUUID();
 
-                    // Clear Immediately
-                    document.getElementById('lead-list').innerHTML = `
+                    // Safe Reset Feed
+                    setHtml('lead-list', `
                 <div class="flex flex-col items-center justify-center py-20 animate-pulse">
-                    <div class="w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin mb-4"></div>
-                    <p class="text-gray-400 text-sm">Scanning signal...</p>
-                    <p class="text-xs text-gray-600 font-mono mt-1">ID: ${currentRunId.substring(0, 8)}</p>
-                </div>`;
+                    <div class="w-12 h-12 rounded-full border-4 border-violet-500 border-t-transparent animate-spin mb-4"></div>
+                    <p class="text-violet-300 text-sm font-medium">Calibrating Radar...</p>
+                    <p class="text-xs text-gray-500 font-mono mt-1">ID: ${currentRunId.substring(0, 8)}</p>
+                </div>
+            `);
 
                     try {
-                        const modeSelect = document.getElementById('run-mode');
+                        const modeSelect = $('run-mode');
                         const mode = modeSelect ? modeSelect.value : 'fresh';
-
-                        if (mode !== 'fresh') {
-                            currentRunId = null; // Show all for refresh
-                            lastRunTime = null;
-                        }
 
                         const res = await fetch(`${API_URL}/pipeline/run`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ mode: mode, run_id: currentRunId })
                         });
+
+                        if (!res.ok) throw new Error("Server refused connection");
+
                         const data = await res.json();
-                        if (data.status === 'busy') alert("Engine is already running!");
-                        else {
-                            document.getElementById('progress-bar').style.width = '5%';
+                        if (data.status === 'busy') {
+                            alert("System is currently busy. Please wait for the active scan to complete.");
+                        } else {
+                            const bar = $('progress-bar');
+                            if (bar) bar.style.width = '5%';
                             startPolling();
                         }
                     } catch (e) {
-                        console.error(e);
+                        console.error("Run Error", e);
                         alert(`Failed to start engine: ${e.message || e}`);
                         setLoadingState(false);
-                        currentRunId = null;
                         fetchData();
                     }
                 }
 
                 async function stopPipeline() {
-                    if (!confirm("Are you sure you want to stop the engine?")) return;
+                    if (!confirm("Confirm Emergency Stop?")) return;
                     try {
                         await fetch(`${API_URL}/pipeline/stop`, { method: 'POST' });
-                        setLoadingState(false, "Stopping...");
-                        setTimeout(fetchData, 1000);
+                        const btn = $('btn-stop');
+                        if (btn) btn.textContent = "Halting...";
+
+                        // Force UI reset after delay
+                        setTimeout(() => {
+                            setLoadingState(false);
+                            fetchData();
+                        }, 2000);
                     } catch (e) {
                         alert("Failed to stop: " + e.message);
                     }
@@ -413,26 +431,27 @@
 
                 function setFilter(bucket) {
                     currentFilter = bucket;
-                    // Update UI Tabs
+
+                    // Reset Tabs
                     document.querySelectorAll('button[id^="tab-"]').forEach(btn => {
-                        btn.classList.remove('bg-surfaceHighlight', 'text-white', 'shadow-sm', 'border-white/10');
-                        btn.classList.add('text-gray-400', 'hover:text-white');
+                        btn.className = "flex-1 whitespace-nowrap px-5 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition-colors uppercase tracking-wider";
                     });
 
+                    // Highlight Active
                     let activeId = 'tab-all';
                     if (bucket === 'READY_TO_DM') activeId = 'tab-ready';
                     if (bucket === 'NEEDS_ALT_OUTREACH') activeId = 'tab-ai';
 
-                    const activeBtn = document.getElementById(activeId);
-                    activeBtn.classList.remove('text-gray-400', 'hover:text-white');
-                    activeBtn.classList.add('bg-surfaceHighlight', 'text-white', 'shadow-sm', 'border-white/10');
+                    const activeBtn = $(activeId);
+                    if (activeBtn) {
+                        activeBtn.className = "flex-1 whitespace-nowrap px-5 py-2 text-xs font-bold rounded-lg bg-violet-600 text-white shadow-[0_0_15px_rgba(124,58,237,0.4)] transition-all uppercase tracking-wider";
+                    }
 
                     fetchData();
                 }
 
                 function startPolling() {
                     if (pollingInterval) return;
-                    // Immediate check
                     pollStatus();
                     pollingInterval = setInterval(pollStatus, 2000);
                 }
@@ -440,69 +459,64 @@
                 async function pollStatus() {
                     try {
                         const res = await fetch(`${API_URL}/pipeline/status`);
+                        if (!res.ok) return; // Silent fail
                         const state = await res.json();
                         renderStatus(state);
 
-                        const bar = document.getElementById('progress-bar');
-                        const container = document.getElementById('progress-container');
-                        const loadingText = document.getElementById('loading-text');
+                        const bar = $('progress-bar');
 
                         if (state.state === 'running') {
                             if (!isRunning) setLoadingState(true, state.current_step || "Processing...");
-                            container.classList.remove('hidden');
-                            // Smooth progress
-                            bar.style.width = `${state.progress}%`;
-                            loadingText.textContent = `${state.current_step} (${state.progress}%)`;
+                            show('progress-container');
 
-                            // Live Update stats
+                            if (bar) bar.style.width = `${state.progress}%`;
+                            setVal('loading-text', `${state.current_step} (${state.progress}%)`);
+
                             updateStats(state);
                         } else {
                             if (isRunning) {
-                                // Just finished
+                                // Finished
                                 setLoadingState(false);
-                                container.classList.add('hidden');
-                                bar.style.width = '0%';
-                                fetchData(); // Final Refresh
+                                hide('progress-container');
+                                if (bar) bar.style.width = '0%';
+                                fetchData();
 
                                 if (state.state === 'error') {
-                                    alert("Engine Error: " + state.current_step);
-                                } else if (state.state === 'done' && state.run_id === currentRunId) {
-                                    // Only notify if it was OUR run
-                                    // Optional toast?
+                                    alert("System Alert: " + (state.current_step || "Unknown Error"));
                                 }
                             }
                             clearInterval(pollingInterval);
                             pollingInterval = null;
                         }
                     } catch (e) {
-                        console.error("Poll Error", e);
+                        console.warn("Poll missing", e);
                     }
                 }
 
                 function renderStatus(state) {
-                    const statusEl = document.getElementById('status-text');
-                    const indicator = document.getElementById('status-indicator');
+                    const statusEl = $('status-text');
+                    const indicator = $('status-indicator');
                     if (!statusEl || !indicator) return;
 
                     let text = "Idle";
                     let colorClass = "text-gray-400";
-                    let dotClass = "bg-gray-500";
+                    let dotClass = "bg-gray-500 shadow-none";
 
                     switch (state.state) {
                         case "running":
-                            text = state.current_step || "Running";
-                            colorClass = "text-emerald-400";
-                            dotClass = "bg-emerald-500";
+                            text = state.current_step || "Scanning...";
+                            colorClass = "text-emerald-400 font-bold";
+                            dotClass = "bg-emerald-400 shadow-[0_0_10px_currentColor]";
                             break;
                         case "error":
-                            text = state.current_step || "Error";
-                            colorClass = "text-red-400";
-                            dotClass = "bg-red-500";
+                            text = "System Fault";
+                            colorClass = "text-red-400 font-bold";
+                            dotClass = "bg-red-500 shadow-[0_0_10px_currentColor]";
                             break;
                         case "done":
-                            text = "Complete";
-                            colorClass = "text-emerald-300";
-                            dotClass = "bg-emerald-400";
+                            text = "Online";
+                            colorClass = "text-emerald-300 font-medium";
+                            dotClass = "bg-emerald-500 shadow-[0_0_10px_currentColor]";
                             break;
                         case "stopping":
                             text = "Stopping...";
@@ -512,181 +526,170 @@
                     }
 
                     statusEl.textContent = text;
-                    statusEl.className = `font-medium ${colorClass}`;
-                    indicator.className = `absolute bottom-2 right-2 w-4 h-4 rounded-full border-2 border-background animate-pulse ${dotClass}`;
+                    statusEl.className = `text-[10px] uppercase tracking-wider ${colorClass}`;
+                    indicator.className = `w-2 h-2 rounded-full animate-pulse transition-all duration-300 ${dotClass}`;
                 }
 
                 async function fetchData() {
                     try {
-                        // Fetch Stats Independently (so one failure doesn't block the other)
+                        // Update Timestamp Safe
+                        const timeEl = $('last-updated');
+                        if (timeEl) timeEl.textContent = "Updated: " + new Date().toLocaleTimeString();
+
+                        // Stats
                         fetch(`${API_URL}/api/leads/stats`)
                             .then(res => res.json())
                             .then(stats => updateStats(stats))
-                            .catch(e => console.warn("Stats failed", e));
+                            .catch(e => console.warn("Stats skipped"));
 
+                        // Leads
                         let url = `${API_URL}/api/leads?limit=500`;
                         if (currentFilter) url += `&bucket=${currentFilter}`;
 
                         const leadsRes = await fetch(url);
-                        if (!leadsRes.ok) {
-                            const errText = await leadsRes.text();
-                            // Try to parse JSON error
-                            let cleanError = `API Error ${leadsRes.status}`;
-                            try {
-                                const errJson = JSON.parse(errText);
-                                if (errJson.detail) cleanError = errJson.detail;
-                            } catch (e) { cleanError = errText.substring(0, 200); }
-                            throw new Error(cleanError);
-                        }
+                        if (!leadsRes.ok) throw new Error("Signal Lost");
 
                         const leads = await leadsRes.json();
                         renderLeads(leads);
-                        document.getElementById('last-updated').textContent = "Updated: " + new Date().toLocaleTimeString();
                     } catch (e) {
-                        console.error("Fetch Data Error", e);
-                        const list = document.getElementById('lead-list');
-                        list.innerHTML = `<div class="flex flex-col items-center justify-center py-20 text-red-400 opacity-80">
-                    <i data-lucide="alert-triangle" class="w-12 h-12 mb-2"></i>
-                    <p class="font-bold text-lg">System Error</p>
-                    <div class="bg-black/40 p-3 rounded-lg border border-red-500/20 mt-4 max-w-md text-center">
-                        <code class="text-xs font-mono text-red-200 block break-words whitespace-pre-wrap">${e.message}</code>
+                        console.error("Fetch Error", e);
+                        setHtml('lead-list', `
+                    <div class="flex flex-col items-center justify-center py-20 text-red-300 opacity-80">
+                        <i data-lucide="wifi-off" class="w-12 h-12 mb-3"></i>
+                        <p class="font-bold text-sm">Connection Interrupted</p>
+                        <button onclick="fetchData()" class="mt-4 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-bold text-white transition-colors">RECONNECT</button>
                     </div>
-                     <button onclick="fetchData()" class="mt-4 px-4 py-2 bg-white/10 hover:bg-white/20 rounded text-sm text-white transition-colors">Retry Connection</button>
-                </div>`;
-                        lucide.createIcons();
+                `);
+                        if (window.lucide) lucide.createIcons();
                     }
                 }
 
                 function updateStats(stats) {
-                    animateValue('stat-total', parseInt(document.getElementById('stat-total').textContent), stats.total_leads || 0, 1000);
-                    animateValue('stat-ready', parseInt(document.getElementById('stat-ready').textContent), stats.ready_to_dm || 0, 1000);
-                    animateValue('stat-alt', parseInt(document.getElementById('stat-alt').textContent), stats.needs_alt_outreach || 0, 1000);
+                    // Helper for animation
+                    const anim = (id, val) => {
+                        const el = $(id);
+                        if (el) animateValue(id, parseInt(el.textContent) || 0, val || 0, 800);
+                    };
+                    anim('stat-total', stats.total_leads);
+                    anim('stat-ready', stats.ready_to_dm);
+                    anim('stat-alt', stats.needs_alt_outreach);
                 }
 
-                function setLoadingState(loading, text = "Initializing Engine...") {
-                    const btn = document.getElementById('btn-generate');
-                    const stopBtn = document.getElementById('btn-stop');
-                    const indicator = document.getElementById('loading-indicator');
-                    const loadText = document.getElementById('loading-text');
+                function setLoadingState(loading, text = "Processing...") {
+                    const btn = $('btn-generate');
+                    const stopBtn = $('btn-stop');
+
                     isRunning = loading;
+
                     if (loading) {
-                        btn.disabled = true;
-                        btn.classList.add('opacity-50', 'cursor-not-allowed');
-                        stopBtn.classList.remove('hidden');
-                        indicator.classList.remove('hidden');
-                        loadText.textContent = text;
+                        if (btn) {
+                            btn.disabled = true;
+                            btn.classList.add('opacity-50', 'cursor-not-allowed', 'grayscale');
+                        }
+                        show('loading-indicator');
+                        show('btn-stop');
+                        setVal('loading-text', text);
                     } else {
-                        btn.disabled = false;
-                        btn.classList.remove('opacity-50', 'cursor-not-allowed');
-                        stopBtn.classList.add('hidden');
-                        indicator.classList.add('hidden');
+                        if (btn) {
+                            btn.disabled = false;
+                            btn.classList.remove('opacity-50', 'cursor-not-allowed', 'grayscale');
+                        }
+                        hide('loading-indicator');
+                        hide('btn-stop');
                     }
                 }
 
-                function renderLeads(leads, append = false) {
-                    const list = document.getElementById('lead-list');
-                    if (!append) list.innerHTML = ''; // Start Fresh only if not appending
+                function renderLeads(leads) {
+                    const list = $('lead-list');
+                    if (!list) return;
+                    list.innerHTML = '';
 
-                    if (leads.length === 0 && !append) {
-                        list.innerHTML = `<div class="flex flex-col items-center justify-center py-20 text-gray-500 opacity-60"><i data-lucide="ghost" class="w-16 h-16 mb-4 stroke-[1]"></i><p class="text-lg font-medium">No leads found.</p></div>`;
-                        lucide.createIcons();
+                    if (!leads || leads.length === 0) {
+                        list.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-20 text-gray-500 opacity-50">
+                        <div class="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mb-4 border border-white/5">
+                            <i data-lucide="radar" class="w-8 h-8 text-gray-600"></i>
+                        </div>
+                        <p class="text-xs font-bold uppercase tracking-widest">No Signals Detected</p>
+                    </div>`;
+                        if (window.lucide) lucide.createIcons();
                         return;
                     }
+
+                    // Fragment for performance
+                    const fragment = document.createDocumentFragment();
+
                     leads.forEach((lead, index) => {
                         const el = document.createElement('div');
-                        // Use new Snap Animation Class with staggered delay in style
-                        el.className = `p-5 rounded-xl glass-card flex items-start gap-4 group opacity-0 snap-fade-in`;
-                        el.style.animationDelay = `${index * 0.05}s`;
+                        // Bento Card Style + Animation
+                        el.className = `p-5 rounded-2xl glass-card flex items-start gap-4 group opacity-0 snap-fade-in hover:bg-white/5 transition-all relative overflow-hidden`;
+                        el.style.animationDelay = `${Math.min(index * 0.05, 1.0)}s`; // Cap delay
 
-                        // Add border or glow for high score
-                        const isHot = (lead.score || 0) > 40;
-                        if (isHot) el.classList.add('border-orange-500/30', 'bg-orange-900/10');
-                        else el.classList.add('hover:bg-white/5');
-
-                        // Score Badge
-                        let scoreBadge = '';
-                        const score = lead.score || 0;
-                        if (score > 40) {
-                            scoreBadge = `<div class="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-orange-500/20 text-orange-300 border border-orange-500/30 uppercase tracking-wide">
-                        <i data-lucide="flame" class="w-3 h-3 text-orange-400 fill-orange-400"></i> Hot (${score})
-                    </div>`;
-                        } else if (score > 10) {
-                            scoreBadge = `<div class="px-2 py-0.5 rounded text-[10px] font-medium bg-gray-800 text-gray-400 border border-gray-700">Activity: ${score}</div>`;
+                        // Hot Glow
+                        if ((lead.score || 0) > 40) {
+                            el.classList.add('border-orange-500/20', 'bg-orange-500/5');
                         }
 
-                        // Avatar Logic
+                        // Badges
+                        let badges = '';
+                        if (lead.bucket === 'READY_TO_DM') {
+                            badges += `<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-[0_0_10px_rgba(16,185,129,0.1)]">Ready</span>`;
+                        } else if (lead.status === 'processed') {
+                            badges += `<span class="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">Analyzed</span>`;
+                        } else {
+                            badges += `<span class="bg-gray-800 text-gray-400 border border-gray-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">New</span>`;
+                        }
+
+                        // Hot Score
+                        if ((lead.score || 0) > 40) {
+                            badges = `<span class="bg-orange-500/10 text-orange-400 border border-orange-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1"><i data-lucide="flame" class="w-3 h-3"></i> ${lead.score}</span>` + badges;
+                        }
+
                         const handle = lead.twitter_handle ? lead.twitter_handle.replace('@', '') : '';
-                        const avatarUrl = lead.profile_image_url || (handle ? `https://unavatar.io/twitter/${handle}` : null);
-                        const pfpUrl = avatarUrl || `https://ui-avatars.com/api/?name=${lead.project_name}&background=random&color=fff`;
+                        const pfp = lead.profile_image_url || (handle ? `https://unavatar.io/twitter/${handle}` : `https://ui-avatars.com/api/?name=${lead.project_name}&background=1e293b&color=fff`);
+                        let desc = (lead.description || "No description available.").replace(/["{}]/g, "");
 
-                        // Clean Description to ensure no codes
-                        let desc = lead.description || "High-signal project detected.";
-                        if (desc.includes('{') || desc.includes('tvl:')) {
-                            // It might still be raw for old items, try to clean
-                            desc = desc.replace(/{|}|"/g, '').replace(/,/g, ' • ');
-                        }
-
-                        // Status Badge Logic (Restored)
-                        let badgeClass = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
-                        let badgeText = 'NEW';
-                        if (lead.status === 'processed' || lead.status === 'Qualified') {
-                            badgeClass = 'bg-blue-500/10 text-blue-400 border-blue-500/20';
-                            badgeText = 'ANALYZED';
-                        } else if (lead.bucket === 'READY_TO_DM') {
-                            badgeClass = 'bg-green-500/10 text-green-400 border-green-500/20';
-                            badgeText = 'READY';
-                        }
-
+                        // Template
                         el.innerHTML = `
-                    <div class="relative w-12 h-12 flex-shrink-0">
-                        <img src="${pfpUrl}" alt="${lead.project_name}" 
-                             class="w-full h-full rounded-lg object-cover border border-white/10 shadow-lg bg-surface"
-                             onerror="this.onerror=null; this.src='https://avatar.vercel.sh/${lead.project_name}'">
+                    <div class="relative w-12 h-12 shrink-0 group-hover:scale-105 transition-transform duration-500 ease-out">
+                        <img src="${pfp}" alt="Icon" class="w-full h-full rounded-xl object-cover border border-white/10 shadow-lg bg-gray-900" loading="lazy" onerror="this.src='https://ui-avatars.com/api/?name=?'">
                         ${lead.platform === 'x' ? '<div class="absolute -bottom-1 -right-1 w-5 h-5 bg-black rounded-full flex items-center justify-center border border-gray-800"><i data-lucide="twitter" class="w-3 h-3 text-white"></i></div>' : ''}
                     </div>
                     
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center justify-between mb-1">
-                            <h3 class="font-bold text-white text-base truncate pr-2">${lead.project_name}</h3>
-                            <div class="flex items-center gap-2">
-                                ${scoreBadge}
-                                <span class="${badgeClass} px-2 py-0.5 rounded text-[10px] font-medium border uppercase tracking-wider">${badgeText}</span>
-                            </div>
+                    <div class="flex-1 min-w-0 z-10">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <h3 class="font-bold text-white text-base truncate pr-2 group-hover:text-violet-300 transition-colors">${lead.project_name}</h3>
+                            <div class="flex items-center gap-2 shrink-0">${badges}</div>
                         </div>
-                        <p class="text-xs text-gray-400 line-clamp-2 leading-relaxed mb-3 font-mono opacity-80">${desc}</p>
                         
-                        <div class="flex items-center gap-2 mt-2">
-                             ${lead.domain ? `<a href="${lead.domain}" target="_blank" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-medium text-white transition-colors flex items-center gap-1.5"><i data-lucide="globe" class="w-3 h-3"></i> Website</a>` : ''}
-                             ${lead.twitter_handle ? `<a href="https://twitter.com/${lead.twitter_handle.replace('@', '')}" target="_blank" class="px-3 py-1.5 rounded-lg bg-[#1DA1F2]/10 hover:bg-[#1DA1F2]/20 text-[#1DA1F2] transition-colors text-xs font-medium flex items-center gap-1.5"><i data-lucide="twitter" class="w-3 h-3"></i> Twitter</a>` : ''}
-                             <span class="ml-auto opacity-40 text-[10px] flex items-center gap-1"><i data-lucide="clock" class="w-3 h-3"></i> ${timeAgo(lead.created_at)}</span>
+                        <p class="text-xs text-gray-400 line-clamp-2 leading-relaxed font-mono opacity-80 group-hover:opacity-100 transition-opacity mb-3">${desc}</p>
+                        
+                        <div class="flex items-center gap-3 opacity-60 group-hover:opacity-100 transition-opacity duration-300">
+                             ${lead.domain ? `<a href="${lead.domain}" target="_blank" class="text-[10px] font-bold text-white hover:text-violet-300 flex items-center gap-1"><i data-lucide="globe" class="w-3 h-3"></i> Web</a>` : ''}
+                             ${handle ? `<a href="https://twitter.com/${handle}" target="_blank" class="text-[10px] font-bold text-[#1DA1F2] hover:text-white flex items-center gap-1"><i data-lucide="twitter" class="w-3 h-3"></i> @${handle}</a>` : ''}
+                             <span class="ml-auto text-[10px] text-gray-600 font-mono">${timeAgo(lead.created_at)}</span>
                         </div>
                     </div>
                 `;
-                        list.appendChild(el);
+                        fragment.appendChild(el);
                     });
-                    lucide.createIcons();
+
+                    list.appendChild(fragment);
+                    if (window.lucide) lucide.createIcons();
                 }
 
                 function timeAgo(dateString) {
-                    if (!dateString) return 'just now';
-                    const date = new Date(dateString);
-                    const seconds = Math.floor((new Date() - date) / 1000);
-                    let interval = seconds / 31536000;
-                    if (interval > 1) return Math.floor(interval) + "y ago";
-                    interval = seconds / 2592000;
-                    if (interval > 1) return Math.floor(interval) + "mo ago";
-                    interval = seconds / 86400;
-                    if (interval > 1) return Math.floor(interval) + "d ago";
-                    interval = seconds / 3600;
-                    if (interval > 1) return Math.floor(interval) + "h ago";
-                    interval = seconds / 60;
-                    if (interval > 1) return Math.floor(interval) + "m ago";
-                    return Math.floor(seconds) + "s ago";
+                    if (!dateString) return '';
+                    const sec = Math.floor((new Date() - new Date(dateString)) / 1000);
+                    if (sec < 60) return 'now';
+                    if (sec < 3600) return Math.floor(sec / 60) + 'm';
+                    if (sec < 86400) return Math.floor(sec / 3600) + 'h';
+                    return Math.floor(sec / 86400) + 'd';
                 }
 
                 function animateValue(id, start, end, duration) {
                     if (start === end) return;
-                    const obj = document.getElementById(id);
+                    const obj = $(id);
                     if (!obj) return;
                     let startTimestamp = null;
                     const step = (timestamp) => {
