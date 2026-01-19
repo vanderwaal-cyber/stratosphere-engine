@@ -187,6 +187,7 @@ def get_pipeline_status():
     return engine_instance.state
 
 from core.ai_drafting import DMDrafter
+from core.enrichment import EnrichmentEngine
 
 @app.post("/api/leads/{lead_id}/analyze")
 async def analyze_lead(lead_id: int, db: Session = Depends(get_db)):
@@ -195,13 +196,28 @@ async def analyze_lead(lead_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Lead not found")
         
     try:
-        # Real AI Analysis via NeuroLink (GPT-4)
+        # 1. Deep Enrichment (Web Scraping)
+        if lead.domain and "http" in lead.domain:
+            enricher = EnrichmentEngine()
+            enriched_data = await enricher.enrich_url(lead.domain)
+            
+            # Update Lead with found contacts
+            if enriched_data.get("email"): lead.email = enriched_data["email"]
+            if enriched_data.get("telegram_url"): lead.telegram_url = enriched_data["telegram_url"]
+            if enriched_data.get("discord_url"): lead.discord_url = enriched_data["discord_url"]
+            # If we found a handle and didn't have one, save it
+            if enriched_data.get("twitter_handle") and not lead.twitter_handle:
+                 lead.twitter_handle = enriched_data["twitter_handle"]
+
+        # 2. Real AI Analysis via NeuroLink (GPT-4)
         drafter = DMDrafter()
         
         # Prepare Context
         project_context = {
             "project_name": lead.project_name,
-            "description": lead.description or ""
+            "description": lead.description or "",
+            "telegram_found": bool(lead.telegram_url), # Inform AI
+            "email_found": bool(lead.email)
         }
         
         # Generate
@@ -212,7 +228,14 @@ async def analyze_lead(lead_id: int, db: Session = Depends(get_db)):
         lead.icebreaker = result.get("icebreaker", "")
             
         db.commit()
-        return {"id": lead.id, "ai_analysis": lead.ai_analysis, "icebreaker": lead.icebreaker}
+        return {
+            "id": lead.id, 
+            "ai_analysis": lead.ai_analysis, 
+            "icebreaker": lead.icebreaker,
+            "email": lead.email,
+            "telegram": lead.telegram_url,
+            "discord": lead.discord_url
+        }
         
     except Exception as e:
         import traceback
