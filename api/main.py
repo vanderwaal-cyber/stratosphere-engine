@@ -186,6 +186,8 @@ async def stop_pipeline():
 def get_pipeline_status():
     return engine_instance.state
 
+from core.ai_drafting import DMDrafter
+
 @app.post("/api/leads/{lead_id}/analyze")
 async def analyze_lead(lead_id: int, db: Session = Depends(get_db)):
     lead = db.query(LeadModel).filter(LeadModel.id == lead_id).first()
@@ -193,47 +195,28 @@ async def analyze_lead(lead_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Lead not found")
         
     try:
-        # Simulate AI Analysis (Replace with Real LLM Call later)
-        # Using simple heuristics for now to be fast and robust
+        # Real AI Analysis via NeuroLink (GPT-4)
+        drafter = DMDrafter()
         
-        analysis = []
-        project = lead.project_name or "Project"
-        desc = (lead.description or "").lower()
+        # Prepare Context
+        project_context = {
+            "project_name": lead.project_name,
+            "description": lead.description or ""
+        }
         
-        # Fit Score Calc
-        fit_score = 75
-        if "defi" in desc or "protocol" in desc: fit_score += 10
-        if "waitlist" in desc: fit_score += 5
-        if "hiring" in desc: fit_score += 5
+        # Generate
+        result = drafter.generate_analysis(project_context)
         
-        # 1. Strategy
-        if "launch" in desc or "soon" in desc:
-            analysis.append(f"🚀 **Launch Phase**: {project} is in pre-launch. Pitch 'Waitlist Growth' strategies.")
-        elif "hiring" in desc:
-             analysis.append(f"👥 **Scaling**: They are hiring. Pitch 'Employer Branding' or specialized recruitment marketing.")
-        else:
-             analysis.append(f"📣 **General Growth**: Focus on increasing TVL and community engagement.")
-             
-        # 2. Tech Stack Spy
-        stack = []
-        if "solana" in desc: stack.append("Solana")
-        if "ethereum" in desc: stack.append("Ethereum")
-        if stack:
-            analysis.append(f"🛠 **Tech**: Built on {', '.join(stack)}.")
-            
-        lead.ai_analysis = "\n".join(analysis)
-        
-        # 3. Icebreaker
-        if lead.twitter_handle:
-            clean_handle = lead.twitter_handle.replace("@","")
-            lead.icebreaker = f"Hey @{clean_handle}, saw the updates on {project}. The new roadmap looks solid. Are you guys focused on growing the TG community right now?"
-        else:
-            lead.icebreaker = f"Hey {project} team, just checking out the protocol. Are you focused on TG growth?"
+        # Save
+        lead.ai_analysis = result.get("ai_analysis", "")
+        lead.icebreaker = result.get("icebreaker", "")
             
         db.commit()
         return {"id": lead.id, "ai_analysis": lead.ai_analysis, "icebreaker": lead.icebreaker}
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 class StatusUpdate(BaseModel):
