@@ -179,6 +179,7 @@ class StratosphereEngine:
                 normalized_handle=norm_handle,
                 status="New",
                 description=str(raw.extra_data)[:500],
+                score=raw.extra_data.get('activity_score', 0),
                 source_counts=1,
                 created_at=datetime.utcnow(),
                 run_id=run_id 

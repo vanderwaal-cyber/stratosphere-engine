@@ -79,7 +79,8 @@ async def read_leads(request: Request, skip: int = 0, limit: int = 100, bucket: 
         elif created_after:
             query = query.filter(LeadModel.created_at >= created_after)
             
-        leads = query.order_by(LeadModel.created_at.desc()).offset(skip).limit(limit).all()
+        # Default Sort: Activity Score DESC -> Recency DESC
+        leads = query.order_by(LeadModel.score.desc(), LeadModel.created_at.desc()).offset(skip).limit(limit).all()
         return leads
     except Exception as e:
         import traceback
