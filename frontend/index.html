@@ -749,14 +749,29 @@
                 if (isHot) el.classList.add('border-orange-500/20', 'bg-orange-500/5');
                 else el.classList.remove('border-orange-500/20', 'bg-orange-500/5');
 
+                let chains = [];
+                try { chains = JSON.parse(lead.chains || '[]'); } catch (e) { if (lead.chains) chains = [lead.chains]; }
+
+                let tags = [];
+                try { tags = JSON.parse(lead.tags || '[]'); } catch (e) { if (lead.tags) tags = [lead.tags]; }
+
                 let badges = '';
+
+                // TELEGRAM PRIORITY BADGE
+                if (lead.telegram_channel || lead.telegram_url) {
+                    badges += `<a href="${lead.telegram_url || '#'}" target="_blank" class="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-[0_0_10px_rgba(59,130,246,0.1)] hover:bg-blue-500/20 transition-colors flex items-center gap-1"><i data-lucide="send" class="w-3 h-3"></i> Telegram</a>`;
+                }
+
                 if (lead.bucket === 'READY_TO_DM') {
                     badges += `<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-[0_0_10px_rgba(16,185,129,0.1)]">Ready</span>`;
                 } else if (lead.ai_analysis) {
                     badges += `<span class="bg-violet-500/10 text-violet-400 border border-violet-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-[0_0_10px_rgba(139,92,246,0.1)]">Analyzed</span>`;
-                } else {
-                    badges += `<span class="bg-gray-800 text-gray-400 border border-gray-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">New</span>`;
                 }
+
+                // Chain Badges
+                chains.slice(0, 2).forEach(c => {
+                    badges += `<span class="bg-gray-700/50 text-gray-300 border border-gray-600 px-1.5 py-0.5 rounded text-[9px] font-mono tracking-wide">${c}</span>`;
+                });
 
                 if (isHot) {
                     badges = `<span class="bg-orange-500/10 text-orange-400 border border-orange-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1"><i data-lucide="flame" class="w-3 h-3"></i> ${lead.score}</span>` + badges;
@@ -765,6 +780,13 @@
                 const handle = lead.twitter_handle ? lead.twitter_handle.replace('@', '') : '';
                 const pfp = lead.profile_image_url || (handle ? `https://unavatar.io/twitter/${handle}` : `https://ui-avatars.com/api/?name=${lead.project_name}&background=1e293b&color=fff`);
                 let desc = (lead.description || "No description available.").replace(/["{}]/g, "");
+
+                // Launch Date
+                let launchBadge = '';
+                if (lead.launch_date) {
+                    const d = new Date(lead.launch_date);
+                    launchBadge = `<span class="text-[9px] font-mono text-gray-500 flex items-center gap-1"><i data-lucide="calendar" class="w-3 h-3"></i> ${d.toLocaleDateString()}</span>`;
+                }
 
                 const analysisBlock = renderAnalysisBlock(lead);
 
@@ -785,6 +807,7 @@
                                 <div class="flex items-center gap-3 opacity-60 group-hover:opacity-100 transition-opacity duration-300">
                                      ${lead.domain ? `<a href="${lead.domain}" target="_blank" class="text-[10px] font-bold text-white hover:text-violet-300 flex items-center gap-1"><i data-lucide="globe" class="w-3 h-3"></i> Web</a>` : ''}
                                      ${handle ? `<a href="https://twitter.com/${handle}" target="_blank" class="text-[10px] font-bold text-[#1DA1F2] hover:text-white flex items-center gap-1"><i data-lucide="twitter" class="w-3 h-3"></i> @${handle}</a>` : ''}
+                                     ${launchBadge}
                                      <span class="ml-auto text-[10px] text-gray-600 font-mono">${timeAgo(lead.created_at)}</span>
                                      
                                      <!-- Analyze Button -->

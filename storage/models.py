@@ -41,7 +41,14 @@ class Lead(Base):
     run_id = Column(String, index=True, nullable=True) # Tracks which run generated this lead
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     last_contacted_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Extended Metadata (New)
+    telegram_channel = Column(String, index=True, nullable=True) # Normalized identifier
+    launch_date = Column(DateTime(timezone=True), nullable=True)
+    chains = Column(String, nullable=True) # JSON list or comma-separated
+    tags = Column(String, nullable=True) # JSON list or comma-separated
     
     # AI Analysis
     ai_analysis = Column(Text, nullable=True) # JSON or Text blob of analysis

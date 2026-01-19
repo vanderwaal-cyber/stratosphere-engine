@@ -23,9 +23,12 @@ class Settings(BaseSettings):
     # API Keys (Optional with defaults/fallbacks logic in code)
     OPENAI_API_KEY: str = ""
     TELEGRAM_BOT_TOKEN: str = ""
+    CMC_API_KEY: str = ""
     
-    class Config:
-        env_file = ".env"
+    model_config = {
+        "env_file": ".env",
+        "extra": "ignore"
+    }
 
 @lru_cache()
 def get_settings():

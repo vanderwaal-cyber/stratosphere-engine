@@ -12,114 +12,11 @@ from collectors.defillama import DeFiLlamaCollector
 from collectors.search import UniversalSearchCollector
 from collectors.github import GithubCollector
 from collectors.launchpads import LaunchpadCollector
+from collectors.coinmarketcap import CoinMarketCapCollector
+from collectors.ico_calendars import ICOCalendarCollector
+from collectors.coingecko import CoinGeckoCollector # User fallback
 from core.logger import app_logger
 from core.notifications import NotificationManager
-
-# Batching & Lead Generation Logic
-class LeadBatchGenerator:
-    def __init__(self, batch_size=50):
-        self.batch_size = batch_size
-        self.max_consecutive_duplicates = 10
-        self.search_rotations = [
-            {"keywords": ["crypto", "defi", "web3", "nft", "blockchain"], "locations": ["", "US", "UK", "Singapore", "Germany"]},
-            {"keywords": ["ai", "builder", "founder", "venture"], "locations": ["US", "India", "Canada"]}
-        ]
-        self._reset_rotation_index()
-
-    def _reset_rotation_index(self):
-        self.rotation_index = 0
-        self.keyword_index = 0
-        self.location_index = 0
-
-    def rotate_search(self):
-        self.keyword_index = (self.keyword_index + 1) % len(self.search_rotations[self.rotation_index]['keywords'])
-        if self.keyword_index == 0:
-            self.location_index = (self.location_index + 1) % len(self.search_rotations[self.rotation_index]['locations'])
-            if self.location_index == 0:
-                self.rotation_index = (self.rotation_index + 1) % len(self.search_rotations)
-
-    def current_search_params(self):
-        sr = self.search_rotations[self.rotation_index]
-        kw = sr['keywords'][self.keyword_index]
-        loc = sr['locations'][self.location_index]
-        return kw, loc
-
-    def generate_unique_leads(self):
-        new_leads = []
-        found_count = 0
-        duplicate_streak = 0
-        db: Session = SessionLocal()
-        loop = asyncio.new_event_loop()
-        try:
-            collector = XKeywordCollector()
-            asyncio.set_event_loop(loop)
-            while found_count < self.batch_size:
-                keyword, location = self.current_search_params()
-                candidates = loop.run_until_complete(collector.collect_profiles(keyword=keyword, location=location))
-                round_added = 0
-                for c in candidates:
-                    get_val = c.get if isinstance(c, dict) else lambda k: getattr(c, k, None)
-
-                    project_name = get_val("name") or get_val("username") or "Unknown"
-                    norm_handle = None
-                    username = get_val("username") or get_val("twitter_handle")
-                    if username:
-                        norm_handle = username.lower().replace("@", "").strip()
-
-                    norm_domain = None
-                    raw_url = get_val("url") or get_val("website")
-                    if raw_url:
-                        try:
-                            parsed = urllib.parse.urlparse(raw_url if raw_url.startswith("http") else f"https://{raw_url}")
-                            norm_domain = parsed.netloc.replace("www.", "").lower()
-                        except Exception:
-                            norm_domain = None
-
-                    existing = None
-                    if norm_handle:
-                        existing = db.query(Lead).filter(Lead.normalized_handle == norm_handle).first()
-                    if not existing and norm_domain:
-                        existing = db.query(Lead).filter(Lead.normalized_domain == norm_domain).first()
-
-                    if existing:
-                        duplicate_streak += 1
-                        if duplicate_streak > self.max_consecutive_duplicates:
-                            self.rotate_search()
-                            duplicate_streak = 0
-                        continue
-
-                    lead = Lead(
-                        project_name=project_name[:100],
-                        domain=raw_url,
-                        normalized_domain=norm_domain,
-                        twitter_handle=f"@{norm_handle}" if norm_handle else None,
-                        normalized_handle=norm_handle,
-                        profile_image_url=get_val("profile_image_url")
-                        or (norm_handle and f"https://unavatar.io/twitter/{norm_handle}")
-                        or f"https://ui-avatars.com/api/?name={urllib.parse.quote(project_name)}&background=random&color=fff",
-                        status="New",
-                        description=str(c)[:500],
-                        source_counts=1,
-                        created_at=datetime.utcnow(),
-                        run_id=f"engine-batch-{uuid.uuid4()}",
-                    )
-                    db.add(lead)
-                    db.commit()  # Insert one at a time to keep DB state updated
-                    db.refresh(lead)
-                    new_leads.append(lead)
-                    found_count += 1
-                    round_added += 1
-                    duplicate_streak = 0
-                    if found_count >= self.batch_size:
-                        break
-                if round_added == 0:
-                    # No progress this round, rotate queries to avoid stalls
-                    self.rotate_search()
-        finally:
-            asyncio.set_event_loop(None)
-            loop.close()
-            db.close()
-        return new_leads  # Each Lead here includes profile_image_url
 
 class StratosphereEngine:
     def __init__(self):
@@ -137,6 +34,7 @@ class StratosphereEngine:
             "stats": {
                 "new_added": 0,
                 "duplicates_skipped": 0,
+                "merged_updates": 0,
                 "failed_ingestion": 0,
                 "total_scraped": 0,
                 "loops": 0
@@ -169,14 +67,14 @@ class StratosphereEngine:
             "discovered": 0,
             "progress": 0,
             "current_step": "Initializing",
-            "stats": {"new_added": 0, "duplicates_skipped": 0, "failed_ingestion": 0, "total_scraped": 0, "loops": 0}
+            "stats": {"new_added": 0, "duplicates_skipped": 0, "merged_updates": 0, "failed_ingestion": 0, "total_scraped": 0, "loops": 0}
         }
         
         self.logger.info(f"🚀 Engine Started (Run {run_id}) | Mode: {mode}")
         
         try:
-            # 5 Minute Global Timeout
-            await asyncio.wait_for(self._run_collection_phase(mode, run_id), timeout=300)
+            # 10 Minute Global Timeout (increased for heavy scrape)
+            await asyncio.wait_for(self._run_collection_phase(mode, run_id), timeout=600)
             self.update_state("done", step="Complete", progress=100)
             
             # NOTIFICATION
@@ -186,138 +84,71 @@ class StratosphereEngine:
             except Exception as ne:
                 self.logger.error(f"Notification Failed: {ne}")
 
-            # AUTO-PILOT LOOP
-            if self.state.get("auto_pilot", False):
-                self.update_state("idle", step="Auto-Pilot: Sleeping 4h...")
-                self.logger.info("Auto-Pilot active. Scheduling next run in 4 hours.")
-                # We schedule it as a background task to avoid blocking response
-                asyncio.create_task(self._schedule_next_run(14400)) # 4 hours
-
         except asyncio.TimeoutError:
             self.logger.warning("Global Timeout Exceeded. Stopping gracefully.")
             self.update_state("done", step="Timed Out (Partial Results)")
         except Exception as e:
-             self.logger.error(f"Run crashed: {e}")
+             self.logger.error(f"Run crashed: {e}", exc_info=True)
              self.update_state("error", step=f"Error: {str(e)}")
         finally:
              self.state["completed_at"] = datetime.utcnow().isoformat()
              if self.stop_requested: self.update_state("done", step="Stopped by user")
 
-    async def _schedule_next_run(self, delay):
-        await asyncio.sleep(delay)
-        if not self.stop_requested:
-            await self.run(mode="fresh", run_id=f"auto-{uuid.uuid4().hex[:6]}")
-
     async def _run_collection_phase(self, mode, run_id):
         db = SessionLocal()
         try:
-            # REAL SOURCES ONLY - No Synthetic
+            # PRIORITY ORDER
             collectors = [
-                DeFiLlamaCollector(),      # API Based - High Reliability
-                LaunchpadCollector(),      # Aggregator - High Quality
-                GithubCollector(),         # API/Scrape - Medium Reliability
-                UniversalSearchCollector(), # Search - Low Reliability (Blocked often)
-                # XKeywordCollector(),     # DDG dependent - Low Reliability
+                CoinMarketCapCollector(),  # PRIMARY VOLUME
+                ICOCalendarCollector(),    # UPCOMING LAUNCHES
+                DeFiLlamaCollector(),      # QUALITY DeFi
+                CoinGeckoCollector(),      # FALLBACK VOLUME
+                # UniversalSearchCollector(), # Search - Supplemental
             ]
             
-            # EMERGENCY FALLBACK: If we have found NOTHING after a few tries, load fallback data
-            from collectors.fallback_data import FALLBACK_LEADS
-            # We don't add FallbackDataCollector to the loop, we use it directly if loop yields 0.
+            target_leads = 200 # User requested 200+ daily
             
-            target_leads = 100 # Increased target as we have more sources
-            max_loops = 100 
-            
-            # STARTUP: Backfill existing leads
-            # await self._backfill_enrichment(db)
-            
-            while self.state["stats"]["new_added"] < target_leads and self.state["stats"]["loops"] < max_loops:
+            # Start Loop
+            for c in collectors:
                 if self.stop_requested: break
+                if self.state["stats"]["new_added"] >= target_leads: 
+                     self.logger.info("Target leads reached. Stopping collection.")
+                     break
                 
-                self.state["stats"]["loops"] += 1
-                loop_idx = self.state["stats"]["loops"]
-                
-                # Dynamic Progress
-                pct = min(95, int((self.state["stats"]["new_added"] / target_leads) * 100))
-                self.update_state(step=f"Mining (Loop {loop_idx}) - {self.state['stats']['new_added']} Leads", progress=pct)
-                
-                found_any_in_loop = False
-                
-                for c in collectors:
-                    if self.stop_requested: break
-                    if self.state["stats"]["new_added"] >= target_leads: break
+                try: 
+                    self.update_state(step=f"Running {c.name}...")
+                    leads = await c.run(self.update_state) 
                     
-                    try: 
-                        # Update State: "Scanning 'Solana defi'..." (handled by callback in collector)
-                        leads = await c.run(self.update_state) 
-                        
-                        found_count = len(leads)
-                        self.state["stats"]["total_scraped"] += found_count
-                        
-                        if found_count > 0:
-                            found_any_in_loop = True
-                            for raw in leads:
-                                if self.state["stats"]["new_added"] >= target_leads: break
-                                await self._process_lead(db, raw, run_id)
-                        else:
-                            # Feedback for empty result
-                             self.update_state(step=f"{c.name}: No results found. Retrying...", progress=pct)
-                             await asyncio.sleep(2) 
-                                
-                    except Exception as e:
-                        self.logger.error(f"Collector {c.name} failed: {e}")
-                        continue
-                
-                # NO SYNTHETIC FILL.
-                
-                # Check outcome
-                if not found_any_in_loop:
-                    self.logger.info("Loop yielded 0 results. Checking emergency protocols.")
-                
-                # FALLBACK ACTIVATION: 
-                # If we have ZERO confirmed leads in the DB after Loop 1, we force fallback.
-                # This catches both "no results scraped" AND "all scraped were invalid/dupes".
-                if self.state["stats"]["new_added"] == 0 and self.state["stats"]["loops"] >= 1:
-                     self.update_state(step="⚠️ IP Blocked. Activating Emergency Fallback Data...", progress=pct)
-                     from collectors.fallback_data import FALLBACK_LEADS
-                     import random
-                     
-                     # Inject a larger batch to ensure visibility
-                     fallback_batch = random.sample(FALLBACK_LEADS, min(15, len(FALLBACK_LEADS)))
-                     
-                     for fb in fallback_batch:
-                         try:
-                             raw = RawLead(
-                                 name=fb["name"],
-                                 source="fallback_emergency",
-                                 website=fb["url"],
-                                 twitter_handle=fb["handle"],
-                                 extra_data={"desc": fb["desc"]}
-                             )
-                             # We process them, but we manualy increment total_scraped to reflect activity
-                             await self._process_lead(db, raw, run_id)
-                             self.state["stats"]["total_scraped"] += 1
-                         except Exception as e:
-                             self.logger.error(f"Fallback Injection Failed for {fb['name']}: {e}")
-                
-                 
-                if not found_any_in_loop:
-                     await asyncio.sleep(2)
+                    found_count = len(leads)
+                    self.state["stats"]["total_scraped"] += found_count
                     
+                    if found_count > 0:
+                        for raw in leads:
+                            if self.stop_requested: break
+                            await self._process_lead(db, raw, run_id)
+                    else:
+                        self.logger.info(f"{c.name} yielded 0 results.")
+                            
+                except Exception as e:
+                    self.logger.error(f"Collector {c.name} failed: {e}")
+                    continue
+                
+                await asyncio.sleep(1)
+
         finally:
             db.close()
 
     async def _process_lead(self, db, raw, run_id):
-        # STRICT VERIFICATION: Must have a URL or Handle
-        if not raw.website and not raw.twitter_handle:
-            return False
+        # STRICT VERIFICATION: Must have a Name
+        if not raw.name: return False
             
         try:
             # Normalization
             norm_domain = None
             norm_handle = None
+            norm_telegram = None
             
             if raw.website:
-                # Basic cleanup
                 if "http" not in raw.website: raw.website = f"https://{raw.website}"
                 try:
                     parsed = urllib.parse.urlparse(raw.website)
@@ -328,59 +159,126 @@ class StratosphereEngine:
                 norm_handle = raw.twitter_handle.lower().replace("@", "").strip()
                 if "twitter.com/" in norm_handle: norm_handle = norm_handle.split("/")[-1]
                 if "x.com/" in norm_handle: norm_handle = norm_handle.split("/")[-1]
-                
-            # Deduplication
+                # Clean query params
+                if "?" in norm_handle: norm_handle = norm_handle.split("?")[0]
+            
+            # Get Telegram from extra_data or other fields
+            telegram = raw.extra_data.get("telegram_channel")
+            if telegram:
+                 # Normalize: t.me/username -> username
+                 norm_telegram = telegram.replace("https://", "").replace("http://", "").replace("t.me/", "").replace("telegram.me/", "").strip()
+                 if "/" in norm_telegram: norm_telegram = norm_telegram.split("/")[0] # handle t.me/user/extra
+                 # Remove @ if present
+                 norm_telegram = norm_telegram.replace("@", "")
+
+            # Deduplication Strategy:
+            # 1. Match Telegram (Strongest Signal)
+            # 2. Match Twitter
+            # 3. Match Domain
+            
             existing = None
-            if norm_handle:
+            
+            if norm_telegram:
+                existing = db.query(Lead).filter(Lead.telegram_channel == norm_telegram).first()
+            
+            if not existing and norm_handle:
                 existing = db.query(Lead).filter(Lead.normalized_handle == norm_handle).first()
+                
             if not existing and norm_domain:
                 existing = db.query(Lead).filter(Lead.normalized_domain == norm_domain).first()
 
+            # Prepare data
+            chains_data = raw.extra_data.get("chains", [])
+            tags_data = raw.extra_data.get("tags", [])
+            # Convert to strings for DB
+            import json
+            chains_str = json.dumps(chains_data) if chains_data else None
+            tags_str = json.dumps(tags_data) if tags_data else None
+            launch_date = raw.extra_data.get("launch_date")
+
             if existing:
-                self.state["stats"]["duplicates_skipped"] += 1
+                # MERGE / UPDATE
+                updated = False
+                
+                # If we found missing info, update it
+                if not existing.telegram_channel and norm_telegram:
+                    existing.telegram_channel = norm_telegram
+                    existing.telegram_url = telegram
+                    updated = True
+                
+                if not existing.twitter_handle and norm_handle:
+                    existing.twitter_handle = f"@{norm_handle}"
+                    existing.normalized_handle = norm_handle
+                    updated = True
+                    
+                if not existing.domain and raw.website:
+                    existing.domain = raw.website
+                    existing.normalized_domain = norm_domain
+                    updated = True
+
+                if not existing.launch_date and launch_date:
+                    existing.launch_date = launch_date
+                    updated = True
+
+                # Determine if we should bump status?
+                # If it's "Archived" but now we found it on "Upcoming ICO", maybe revive?
+                # For now, just track update.
+                
+                # Add Source Log
+                source_entry = LeadSource(
+                    lead=existing,
+                    source_name=raw.source,
+                    source_url=raw.website
+                )
+                db.add(source_entry)
+                existing.source_counts += 1
+                
+                if updated:
+                    self.state["stats"]["merged_updates"] += 1
+                    db.commit()
+                else:
+                    self.state["stats"]["duplicates_skipped"] += 1
                 return False
                 
-            # Format Description nicely
-            desc_text = raw.extra_data.get("desc")
-            if not desc_text:
-                # Format extra_data into string
-                parts = []
-                for k, v in raw.extra_data.items():
-                    if k in ['id', 'chainK', 'symbol', 'gecko_id']: continue
-                    parts.append(f"{k.capitalize()}: {v}")
-                desc_text = ", ".join(parts) if parts else "High-signal project."
-
             # Create NEW Verified Lead
+            description = raw.extra_data.get("description") or f"Discovered on {raw.source}"
+            
             lead = Lead(
                 project_name=raw.name[:100],
                 domain=raw.website,
                 normalized_domain=norm_domain,
                 twitter_handle=f"@{norm_handle}" if norm_handle else None,
                 normalized_handle=norm_handle,
+                telegram_channel=norm_telegram,
+                telegram_url=telegram,
+                chains=chains_str,
+                tags=tags_str,
+                launch_date=launch_date,
                 profile_image_url=raw.profile_image_url
                 or (norm_handle and f"https://unavatar.io/twitter/{norm_handle}")
+                or (norm_domain and f"https://logo.clearbit.com/{norm_domain}")
                 or f"https://ui-avatars.com/api/?name={urllib.parse.quote(raw.name)}&background=random&color=fff",
                 status="New",
-                description=str(desc_text)[:500],
-                score=raw.extra_data.get('activity_score', 0),
+                description=str(description)[:500],
+                score=0,
                 source_counts=1,
                 created_at=datetime.utcnow(),
                 run_id=run_id 
             )
             db.add(lead)
+            db.flush() # get ID
+            
+            # Add Source
+            source_entry = LeadSource(
+                lead_id=lead.id,
+                source_name=raw.source,
+                source_url=raw.website
+            )
+            db.add(source_entry)
+            
             db.commit()
             db.refresh(lead)
 
-            # --- ENRICHMENT TRIGGER ---
-            # try:
-            #     from enrichment.pipeline import EnrichmentPipeline
-            #     pipeline = EnrichmentPipeline(db)
-            #     await pipeline.process_lead(lead)
-            #     db.commit() # Save Qualification Status
-            #     self.logger.info(f"✨ Ingested & Enriched: {lead.project_name} -> {lead.bucket}")
-            # except Exception as ev:
-            #     self.logger.error(f"Enrichment Error for {lead.project_name}: {ev}")
-            
             self.state["stats"]["new_added"] += 1
             self.state["discovered"] += 1
             return True
@@ -388,24 +286,7 @@ class StratosphereEngine:
         except Exception as e:
             db.rollback()
             self.state["stats"]["failed_ingestion"] += 1
+            # self.logger.error(f"Ingestion error: {e}")
             return False
-
-    async def _backfill_enrichment(self, db):
-        pass
-        # """Processes any 'New' leads that might have been missed."""
-        # from enrichment.pipeline import EnrichmentPipeline
-        # pipeline = EnrichmentPipeline(db)
-        # 
-        # pending = db.query(Lead).filter(Lead.status == "New").limit(50).all()
-        # if pending:
-        #      self.logger.info(f"🔄 Backfilling Enrichment for {len(pending)} leads...")
-        #      for p in pending:
-        #          await pipeline.process_lead(p)
-        #      db.commit()
-        try:
-            log = RunLog(component=component, level=level, message=message)
-            db.add(log)
-            db.commit()
-        except: pass
 
 engine_instance = StratosphereEngine()

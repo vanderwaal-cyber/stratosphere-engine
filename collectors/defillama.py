@@ -50,6 +50,19 @@ class DeFiLlamaCollector(BaseCollector):
                 if not website:
                     continue
                     
+                # Normalize Chains
+                chains = p.get('chains', [])
+                if not chains and p.get('chain'):
+                    chains = [p.get('chain')]
+                
+                # Launch Date
+                launch_date = None
+                if p.get('listedAt'):
+                    import datetime
+                    try:
+                        launch_date = datetime.datetime.fromtimestamp(p.get('listedAt'))
+                    except: pass
+
                 leads.append(RawLead(
                     name=p.get('name'),
                     source="defillama_new",
@@ -57,9 +70,11 @@ class DeFiLlamaCollector(BaseCollector):
                     twitter_handle=twitter,
                     extra_data={
                         "tvl": p.get('tvl', 0),
-                        "listed_at": p.get('listedAt'),
-                        "chain": p.get('chain'),
-                        "category": p.get('category')
+                        "launch_date": launch_date,
+                        "chains": chains,
+                        "tags": [p.get('category')] if p.get('category') else [],
+                        "description": p.get('description'),
+                        "defillama_id": p.get('id')
                     }
                 ))
                 
