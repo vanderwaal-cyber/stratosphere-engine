@@ -99,10 +99,20 @@ class StratosphereEngine:
     async def _run_logic(self, mode, run_id):
         db = SessionLocal()
         try:
-            # 1. Collection Loop - Keep going until 100 New or Timeout
-            # Priority: Universal Search (Infinite) > DeFiLlama > X Signals
+from collectors.github import GithubCollector
+from collectors.launchpads import LaunchpadCollector
+
+# ... imports ...
+
+    async def _run_logic(self, mode, run_id):
+        db = SessionLocal()
+        try:
+            # 1. Collection Loop - Keep going until target New or Timeout
+            # Priority: Universal Search (Infinite) > GitHub > Launchpads > DeFiLlama
             collectors = [
                 UniversalSearchCollector(),
+                GithubCollector(),
+                LaunchpadCollector(),
                 DeFiLlamaCollector(),
                 XKeywordCollector(),
             ]
