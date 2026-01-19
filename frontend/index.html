@@ -546,10 +546,14 @@
                         let url = `${API_URL}/api/leads?limit=500`;
                         if (currentFilter) url += `&bucket=${currentFilter}`;
 
+                        console.log("Fetching Leads URL:", url); // DEBUG
+
                         const leadsRes = await fetch(url);
                         if (!leadsRes.ok) throw new Error("Signal Lost");
 
                         const leads = await leadsRes.json();
+                        console.log("Leads Data Received:", leads); // DEBUG
+
                         renderLeads(leads);
                     } catch (e) {
                         console.error("Fetch Error", e);
@@ -557,6 +561,7 @@
                     <div class="flex flex-col items-center justify-center py-20 text-red-300 opacity-80">
                         <i data-lucide="wifi-off" class="w-12 h-12 mb-3"></i>
                         <p class="font-bold text-sm">Connection Interrupted</p>
+                        <p class="text-xs font-mono mt-2 opacity-50">${e.message}</p>
                         <button onclick="fetchData()" class="mt-4 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-bold text-white transition-colors">RECONNECT</button>
                     </div>
                 `);
