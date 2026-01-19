@@ -30,22 +30,40 @@ async def startup_db():
     with engine.connect() as conn:
         try:
             # 1. Try Postgres (Ideal for Prod)
-            conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS run_id VARCHAR"))
-            conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS profile_image_url VARCHAR"))
-            conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS score INTEGER DEFAULT 0"))
-            conn.commit()
-            print("Migration (Postgres) success.")
-        except Exception:
             try:
-                # 2. Try SQLite (Local) - No IF NOT EXISTS
+                conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS run_id VARCHAR"))
+                conn.commit()
+            except: pass
+            
+            try:
+                conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS profile_image_url VARCHAR"))
+                conn.commit()
+            except: pass
+
+            try:
+                conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS score INTEGER DEFAULT 0"))
+                conn.commit()
+            except: pass
+
+            print("Migration (Postgres) attempts complete.")
+        except Exception:
+            # 2. Try SQLite (Local) - No IF NOT EXISTS
+            try:
                 conn.execute(text("ALTER TABLE leads ADD COLUMN run_id VARCHAR"))
+                conn.commit()
+            except: pass
+            
+            try:
                 conn.execute(text("ALTER TABLE leads ADD COLUMN score INTEGER DEFAULT 0"))
+                conn.commit()
+            except: pass
+            
+            try:
                 conn.execute(text("ALTER TABLE leads ADD COLUMN profile_image_url VARCHAR"))
                 conn.commit()
-                print("Migration (SQLite) success.")
-            except Exception as e:
-                # 3. Assume it exists or something else is wrong
-                print(f"Migration Note: {e}")
+            except: pass
+            
+            print("Migration (SQLite) attempts complete.")
 
 # Schemas
 class LeadBase(BaseModel):
