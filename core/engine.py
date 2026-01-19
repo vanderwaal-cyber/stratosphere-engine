@@ -191,97 +191,108 @@ class StratosphereEngine:
     async def _run_collection_phase(self, mode, run_id):
         db = SessionLocal()
         try:
-            # REAL SOURCES ONLY - No Synthetic
-            collectors = [
-                DeFiLlamaCollector(),      # API Based - High Reliability
-                LaunchpadCollector(),      # Aggregator - High Quality
-                GithubCollector(),         # API/Scrape - Medium Reliability
-                UniversalSearchCollector(), # Search - Low Reliability (Blocked often)
-                # XKeywordCollector(),     # DDG dependent - Low Reliability
+            # --- CONFIGURATION ---
+            # User defined keywords + some defaults
+            KEYWORDS = [
+                "SaaS Founder", "Marketing Agency Owner", "Ecom Brand Owner", 
+                "Web3 Builder", "Solana Developer", "AI Agent Startup",
+                "Crypto VC", "DeFi Protocol Founder", "NFT Project Lead"
+            ]
+            current_kw_index = 0
+            consecutive_duplicates = 0
+            MAX_DUPLICATES_BEFORE_ROTATE = 15
+            TARGET_NEW_LEADS = 50
+            
+            # Use Universal Search primarily for this targeted "Deep Dive"
+            search_collector = UniversalSearchCollector()
+            
+            # Other collectors ran once at start? Or mixed in? 
+            # For now, let's mix standard collectors with the targeted search
+            other_collectors = [
+                DeFiLlamaCollector(),      
+                LaunchpadCollector(),      
+                # GithubCollector(), # GitHub is less relevant for "SaaS Founder" keywords
             ]
             
-            # EMERGENCY FALLBACK: If we have found NOTHING after a few tries, load fallback data
-            from collectors.fallback_data import FALLBACK_LEADS
-            # We don't add FallbackDataCollector to the loop, we use it directly if loop yields 0.
-            
-            target_leads = 100 # Increased target as we have more sources
-            max_loops = 100 
-            
-            # STARTUP: Backfill existing leads
+            # STARTUP: Backfill
             await self._backfill_enrichment(db)
             
-            while self.state["stats"]["new_added"] < target_leads and self.state["stats"]["loops"] < max_loops:
+            self.logger.info(f"🔎 Starting Deep Dive. Target: {TARGET_NEW_LEADS} New Leads.")
+            
+            # MAIN LOOP
+            while self.state["stats"]["new_added"] < TARGET_NEW_LEADS:
                 if self.stop_requested: break
                 
                 self.state["stats"]["loops"] += 1
                 loop_idx = self.state["stats"]["loops"]
                 
-                # Dynamic Progress
-                pct = min(95, int((self.state["stats"]["new_added"] / target_leads) * 100))
-                self.update_state(step=f"Mining (Loop {loop_idx}) - {self.state['stats']['new_added']} Leads", progress=pct)
+                # ROTATION LOGIC
+                current_keyword = KEYWORDS[current_kw_index % len(KEYWORDS)]
+                
+                # Check Rotate Condition
+                if consecutive_duplicates >= MAX_DUPLICATES_BEFORE_ROTATE:
+                    current_kw_index += 1
+                    consecutive_duplicates = 0 # Reset streak
+                    current_keyword = KEYWORDS[current_kw_index % len(KEYWORDS)]
+                    self.logger.info(f"🔄 Too many duplicates. Rotating to: {current_keyword}")
+                    # Notify UI of Rotation
+                    self.update_state(step=f"Rotating to: '{current_keyword}'...")
+                    await asyncio.sleep(2) # Visual pause for user to see the status change
+
+                # Update Progress
+                pct = min(95, int((self.state["stats"]["new_added"] / TARGET_NEW_LEADS) * 100))
+                self.update_state(step=f"Mining: '{current_keyword}' ({self.state['stats']['new_added']}/{TARGET_NEW_LEADS})", progress=pct)
                 
                 found_any_in_loop = False
                 
-                for c in collectors:
-                    if self.stop_requested: break
-                    if self.state["stats"]["new_added"] >= target_leads: break
+                # 1. RUN TARGETED SEARCH (High Priority)
+                try: 
+                    # Construct query with site:twitter.com to ensure profile results
+                    query = f"{current_keyword} site:twitter.com"
                     
-                    try: 
-                        # Update State: "Scanning 'Solana defi'..." (handled by callback in collector)
-                        leads = await c.run(self.update_state) 
-                        
-                        found_count = len(leads)
-                        self.state["stats"]["total_scraped"] += found_count
-                        
-                        if found_count > 0:
-                            found_any_in_loop = True
-                            for raw in leads:
-                                if self.state["stats"]["new_added"] >= target_leads: break
-                                await self._process_lead(db, raw, run_id)
-                        else:
-                            # Feedback for empty result
-                             self.update_state(step=f"{c.name}: No results found. Retrying...", progress=pct)
-                             await asyncio.sleep(2) 
+                    # Pass as override
+                    leads = await search_collector.collect(query_override=[query])
+                    
+                    found_count = len(leads)
+                    self.state["stats"]["total_scraped"] += found_count
+                    
+                    if found_count > 0:
+                        found_any_in_loop = True
+                        for raw in leads:
+                            if self.state["stats"]["new_added"] >= TARGET_NEW_LEADS: break
+                            
+                            is_new = await self._process_lead(db, raw, run_id)
+                            if is_new:
+                                consecutive_duplicates = 0 # Reset streak on success
+                            else:
+                                consecutive_duplicates += 1
                                 
-                    except Exception as e:
-                        self.logger.error(f"Collector {c.name} failed: {e}")
-                        continue
+                    else:
+                        consecutive_duplicates += 5 # Penaltize empty results to rotate faster
+                        
+                except Exception as e:
+                    self.logger.error(f"Search failed: {e}")
                 
-                # NO SYNTHETIC FILL.
+                 # 2. RUN STANDARD COLLECTORS (Every 3rd loop to keep fresh)
+                if loop_idx % 3 == 0: 
+                    for c in other_collectors:
+                        if self.state["stats"]["new_added"] >= TARGET_NEW_LEADS: break
+                        try:
+                            self.update_state(step=f"Checking {c.name}...")
+                            leads = await c.run(lambda **k: None) # Silent update
+                            for raw in leads: 
+                                await self._process_lead(db, raw, run_id)
+                        except: pass
                 
                 # Check outcome
                 if not found_any_in_loop:
-                    self.logger.info("Loop yielded 0 results. Checking emergency protocols.")
+                    self.logger.info("Loop yielded 0 results. Checking limits.")
+                    await asyncio.sleep(2)
                 
-                # FALLBACK ACTIVATION: 
-                # If we have ZERO confirmed leads in the DB after Loop 1, we force fallback.
-                # This catches both "no results scraped" AND "all scraped were invalid/dupes".
-                if self.state["stats"]["new_added"] == 0 and self.state["stats"]["loops"] >= 1:
-                     self.update_state(step="⚠️ IP Blocked. Activating Emergency Fallback Data...", progress=pct)
-                     from collectors.fallback_data import FALLBACK_LEADS
-                     import random
-                     
-                     # Inject a larger batch to ensure visibility
-                     fallback_batch = random.sample(FALLBACK_LEADS, min(15, len(FALLBACK_LEADS)))
-                     
-                     for fb in fallback_batch:
-                         try:
-                             raw = RawLead(
-                                 name=fb["name"],
-                                 source="fallback_emergency",
-                                 website=fb["url"],
-                                 twitter_handle=fb["handle"],
-                                 extra_data={"desc": fb["desc"]}
-                             )
-                             # We process them, but we manualy increment total_scraped to reflect activity
-                             await self._process_lead(db, raw, run_id)
-                             self.state["stats"]["total_scraped"] += 1
-                         except Exception as e:
-                             self.logger.error(f"Fallback Injection Failed for {fb['name']}: {e}")
-                
-                 
-                if not found_any_in_loop:
-                     await asyncio.sleep(2)
+                # Safety Limit
+                if self.state["stats"]["loops"] > 200:
+                    self.logger.warning("Max loops reached. Stopping.")
+                    break
                     
         finally:
             db.close()

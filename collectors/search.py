@@ -41,26 +41,30 @@ class UniversalSearchCollector(BaseCollector):
         
         self.modifiers = ["site:twitter.com", "site:x.com"]
 
-    async def collect(self) -> List[RawLead]:
+    async def collect(self, query_override: List[str] = None) -> List[RawLead]:
         leads = []
         try:
-            # Generate 50 unique queries per batch run
-            queries = set()
-            while len(queries) < 50:
-                eco = random.choice(self.ecosystems) if random.random() > 0.4 else ""
-                niche = random.choice(self.niches)
-                typ = random.choice(self.types)
-                action = random.choice(self.actions)
-                recency = random.choice(self.recency_markers) if random.random() > 0.6 else ""
-                
-                # Permutation: "solana defi protocol waitlist 2025"
-                parts = [p for p in [eco, niche, typ, action, recency] if p]
-                q = " ".join(parts)
-                
-                # 80% chance to force Twitter site search (CT Radar Mode)
-                if random.random() > 0.2: 
-                    q += " " + random.choice(self.modifiers)
-                queries.add(q)
+            # Check for override (from Engine rotation)
+            if query_override:
+                queries = set(query_override)
+            else:
+                # Generate 50 unique queries per batch run (Default CT Radar Mode)
+                queries = set()
+                while len(queries) < 50:
+                    eco = random.choice(self.ecosystems) if random.random() > 0.4 else ""
+                    niche = random.choice(self.niches)
+                    typ = random.choice(self.types)
+                    action = random.choice(self.actions)
+                    recency = random.choice(self.recency_markers) if random.random() > 0.6 else ""
+                    
+                    # Permutation: "solana defi protocol waitlist 2025"
+                    parts = [p for p in [eco, niche, typ, action, recency] if p]
+                    q = " ".join(parts)
+                    
+                    # 80% chance to force Twitter site search (CT Radar Mode)
+                    if random.random() > 0.2: 
+                        q += " " + random.choice(self.modifiers)
+                    queries.add(q)
             
             queries = list(queries)
             
