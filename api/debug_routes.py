@@ -76,3 +76,11 @@ async def debug_apify():
             "mapping_errors": mapping_errors[:3],
             "raw_sample": items[:1] 
         }
+        
+    except Exception as e:
+        import traceback
+        return {
+            "status": "error",
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }
