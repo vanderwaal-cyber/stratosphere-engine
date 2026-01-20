@@ -24,7 +24,9 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     TELEGRAM_BOT_TOKEN: str = ""
     CMC_API_KEY: str = ""
+    CMC_API_KEY: str = ""
     X_BEARER_TOKEN: str = ""
+    APIFY_API_TOKEN: str = ""
 
     
     model_config = {

@@ -9,6 +9,7 @@ from storage.database import SessionLocal
 from storage.models import Lead, LeadSource, RunLog
 from collectors.x_keywords import XKeywordCollector
 from collectors.x_api import XApiCollector
+from collectors.apify_scraper import ApifyXCollector # New Scraper
 from collectors.defillama import DeFiLlamaCollector
 from collectors.search import UniversalSearchCollector
 from collectors.github import GithubCollector
@@ -100,12 +101,12 @@ class StratosphereEngine:
         try:
             # PRIORITY ORDER
             collectors = [
+                ApifyXCollector(),         # NEW PRIMARY: Scraper (High Volume)
                 CoinMarketCapCollector(),  # PRIMARY VOLUME
                 ICOCalendarCollector(),    # UPCOMING LAUNCHES
-                XApiCollector(),           # LIVE SOCIALS
+                # XApiCollector(),           # DISABLED (Credits Depleted)
                 DeFiLlamaCollector(),      # QUALITY DeFi
                 CoinGeckoCollector(),      # FALLBACK VOLUME
-                # UniversalSearchCollector(), # Search - Supplemental
             ]
             
             target_leads = 200 # User requested 200+ daily
