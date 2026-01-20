@@ -16,3 +16,4 @@ gunicorn
 slowapi
 duckduckgo-search
 aiohttp
+apify-client
