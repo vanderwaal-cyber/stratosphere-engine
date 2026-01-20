@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_TOKEN: str = ""
     CMC_API_KEY: str = ""
     X_BEARER_TOKEN: str = ""
-    X_BEARER_TOKEN: str = ""
+
     
     model_config = {
         "env_file": ".env",

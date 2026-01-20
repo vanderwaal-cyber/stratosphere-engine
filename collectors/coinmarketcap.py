@@ -75,19 +75,32 @@ class CoinMarketCapCollector(BaseCollector):
                     details = coin_details.get(coin_id, {})
                     urls = details.get("urls", {})
                     
-                    # Extract Socials
+                    # Extract Socials (Robust)
                     twitter = None
-                    if urls.get("twitter") and isinstance(urls["twitter"], list) and len(urls["twitter"]) > 0:
-                        twitter = urls["twitter"][0]
-                    
                     telegram = None
-                    if urls.get("chat") and isinstance(urls["chat"], list):
-                        for chat in urls["chat"]:
-                            if "t.me" in chat or "telegram" in chat:
-                                telegram = chat
-                                break
-                    
                     website = None
+                    
+                    # 1. Flatten all URLs to search
+                    all_urls = []
+                    if isinstance(urls, dict):
+                        for key, val in urls.items():
+                            if isinstance(val, list):
+                                all_urls.extend(val)
+                            elif isinstance(val, str):
+                                all_urls.append(val)
+                                
+                    # 2. Search for relevant links
+                    for link in all_urls:
+                        if not link: continue
+                        link_lower = link.lower()
+                        
+                        if "twitter.com" in link_lower or "x.com" in link_lower:
+                            if not twitter: twitter = link
+                            
+                        elif "t.me" in link_lower or "telegram.me" in link_lower:
+                            if not telegram: telegram = link
+                            
+                    # 3. Website Fallback (Use explicit 'website' key first)
                     if urls.get("website") and isinstance(urls["website"], list) and len(urls["website"]) > 0:
                         website = urls["website"][0]
 

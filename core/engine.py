@@ -3,7 +3,7 @@ import random
 import time
 import uuid
 import urllib.parse
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from storage.database import SessionLocal
 from storage.models import Lead, LeadSource, RunLog
@@ -245,6 +245,37 @@ class StratosphereEngine:
             # Create NEW Verified Lead
             description = raw.extra_data.get("description") or f"Discovered on {raw.source}"
             
+            # SCORING SYSTEM (Quality Check)
+            score = 0
+            if norm_telegram: score += 30 # Strongest Signal
+            if norm_handle: score += 10
+            if raw.website: score += 10
+            
+            # Freshness Bonus
+            is_upcoming = False
+            if launch_date:
+                try:
+                    ld = launch_date
+                    if isinstance(ld, str):
+                        # Try parsing various formats if needed, or assume ISO
+                         ld = datetime.fromisoformat(ld.replace("Z", "+00:00"))
+                    
+                    if ld > datetime.utcnow():
+                        score += 10
+                        is_upcoming = True
+                    elif (datetime.utcnow() - ld).days < 7:
+                        score += 10 # Recent launch
+                except: path
+            
+            # Bucketing Logic
+            bucket = None
+            if score >= 40:
+                bucket = "READY_TO_DM"
+            elif is_upcoming:
+                 bucket = "UPCOMING_WATCHLIST"
+            elif norm_handle:
+                 bucket = "NEEDS_ENRICHMENT"
+
             lead = Lead(
                 project_name=raw.name[:100],
                 source=raw.source,
@@ -263,7 +294,8 @@ class StratosphereEngine:
                 or f"https://ui-avatars.com/api/?name={urllib.parse.quote(raw.name)}&background=random&color=fff",
                 status="New",
                 description=str(description)[:500],
-                score=0,
+                score=score,
+                bucket=bucket,
                 source_counts=1,
                 created_at=datetime.utcnow(),
                 run_id=run_id 
