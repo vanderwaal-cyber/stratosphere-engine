@@ -1,5 +1,9 @@
 
 from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException
+
+router = APIRouter()
+
 @router.get("/debug/apify")
 async def debug_apify():
     """
