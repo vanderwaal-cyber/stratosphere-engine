@@ -4,6 +4,8 @@ import asyncio
 import json
 from typing import List
 from core.config import get_settings
+from apify_client import ApifyClient
+from collectors.base import BaseCollector, RawLead
 
 class ApifyXCollector(BaseCollector):
     def __init__(self):
