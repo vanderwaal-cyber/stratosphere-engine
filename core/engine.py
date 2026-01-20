@@ -231,11 +231,18 @@ class StratosphereEngine:
             
             # QUALITY FILTER (Anti-Spam)
             # If a lead has NO Twitter AND NO Website, it is considered "bland"/useless.
+            # QUALITY FILTER (Anti-Spam)
+            # If a lead has NO Twitter AND NO Website, it is considered "bland"/useless.
             if not norm_handle and not raw.website:
-                # Exception: unless it has a strong Telegram signal
-                if not norm_telegram:
-                     self.logger.info(f"Skipping Low Quality Lead (No Socials): {raw.name}")
-                     return False
+                 # Exception: unless it has a strong Telegram signal
+                 if not norm_telegram:
+                     # RELAXED: Allow Apify source with description to pass (Manual Review bucket)
+                     if raw.source == "Apify (X)" and len(description) > 50:
+                         bucket = "NEEDS_ENRICHMENT"
+                         # self.logger.info(f"⚠️ Allowed Partial Lead (No Socials): {raw.name}")
+                     else:
+                         self.logger.info(f"Skipping Low Quality Lead (No Socials): {raw.name}")
+                         return False
             
             # SCORING SYSTEM (Quality Check)
             score = 0
