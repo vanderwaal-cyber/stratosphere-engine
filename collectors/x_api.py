@@ -15,17 +15,17 @@ class XApiCollector(BaseCollector):
             self.logger.warning("X_BEARER_TOKEN not found. Skipping X/Twitter collection.")
             return []
 
-        # "X Fresh Scanner" - Primary Source Logic
-        # Prioritize tweets that explicitly signal a Telegram group => High Intent
+        # "X Fresh Scanner" - Broad Mode (No strict Telegram filter)
+        # We eagerly look for launch signals with ANY link.
         queries = [
-            # 1. THE MASTER QUERY (User Spec: Launch + Telegram Link + Engagement)
-            '(("launching" OR "IDO" OR "TGE" OR "testnet" OR "DePIN" OR "AI agent" OR "NFT drop" OR "new protocol") (telegram OR t.me) has:links -is:retweet min_faves:3 min_replies:2)',
+            # 1. LAUNCH & NEW PROTOCOLS (Broad)
+            '(("launching" OR "IDO" OR "TGE" OR "testnet" OR "DePIN" OR "AI agent" OR "NFT drop" OR "new protocol") has:links -is:retweet min_faves:2)',
             
-            # 2. Backup: Broad "New Project" discovery (High Precision)
-            '(("fair launch" OR "stealth launch" OR "contract address") (solana OR eth OR base) (t.me OR telegram) -is:retweet min_faves:3)',
+            # 2. CONTRACTS / CA (Degen)
+            '(("contract address" OR "ca:") (solana OR eth OR base) has:links -is:retweet min_faves:2)',
             
-            # 3. Narrative Specific (DePIN/AI)
-            '(("DePIN" OR "AI Agent") ("roadmap" OR "whitepaper") (t.me OR telegram) -is:retweet min_faves:3)'
+            # 3. NARRATIVES
+            '(("DePIN" OR "AI Agent") ("roadmap" OR "whitepaper" OR "building") has:links -is:retweet min_faves:2)'
         ]
 
         async with httpx.AsyncClient(headers={"Authorization": f"Bearer {self.bearer_token}"}, timeout=45) as client:
@@ -34,7 +34,6 @@ class XApiCollector(BaseCollector):
                 pages_fetched = 0
                 
                 # RECURSIVE PAGINATION LOOP
-                # Goal: Dig deeper until we have enough leads or hit limits.
                 while True:
                     if len(leads) >= 500: break # Hard stop total
                     if pages_fetched > 5: break # Max depth per query
@@ -59,7 +58,7 @@ class XApiCollector(BaseCollector):
                         
                         if resp.status_code == 429:
                             self.logger.warning("X API Rate Limit hit. Cooling down...")
-                            await asyncio.sleep(5) # Wait a bit then break/stop this query
+                            await asyncio.sleep(5) 
                             break 
                             
                         if resp.status_code != 200:
@@ -101,8 +100,26 @@ class XApiCollector(BaseCollector):
                                     if "t.me" in expanded or "telegram.me" in expanded: telegram = expanded
                                     elif not website: website = expanded
                             
-                            if not telegram and not website: continue
+                            # 3. Fallback: If has:links was true but we failed to parse a "website",
+                            # just use the first link found in tweet as generic website.
+                            if not website and not telegram:
+                                if "entities" in tweet and "urls" in tweet["entities"]:
+                                    first_url = tweet["entities"]["urls"][0].get("expanded_url")
+                                    if first_url and "twitter.com" not in first_url and "x.com" not in first_url:
+                                        website = first_url
 
+                            # REQUIREMENT RELAXED: Just need a Handle + (Any Link OR decent profile)
+                            # But effectively we want *some* destination.
+                            if not telegram and not website: 
+                                # If profile has description, we might accept it? 
+                                # User said "remove telegram only".
+                                # We'll accept if we have a website field (even if it's just a tweet link)
+                                pass 
+                            
+                            # If still empty, maybe skip? 
+                            # Let's be generous: If we have a username and the tweet matched "launching" + "has:links",
+                            # we treat it as a lead.
+                            
                             # AI Opener
                             text_lower = tweet.get("text", "").lower()
                             project_type = "project"
@@ -115,7 +132,7 @@ class XApiCollector(BaseCollector):
                             elif "base" in text_lower: chain = "Base"
                             elif "eth" in text_lower: chain = "Ethereum"
                             
-                            icebreaker = f"Saw your launch announcement on X—cool {project_type} on {chain}. Let's chat Telegram partnerships?"
+                            icebreaker = f"Saw your launch announcement on X—cool {project_type} on {chain}. Let's chat partnerships?"
 
                             lead = RawLead(
                                 name=f"@{username}",
