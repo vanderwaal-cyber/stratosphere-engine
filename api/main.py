@@ -55,9 +55,30 @@ async def startup_db():
                 conn.commit()
             except: pass
 
+            # Phase 2 Migrations (Postgres)
+            try:
+                conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS telegram_channel VARCHAR"))
+                conn.commit()
+            except: pass
+            
+            try:
+                conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS launch_date TIMESTAMP"))
+                conn.commit()
+            except: pass
+            
+            try:
+                conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS chains VARCHAR"))
+                conn.commit()
+            except: pass
+            
+            try:
+                conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS tags VARCHAR"))
+                conn.commit()
+            except: pass
+
             print("Migration (Postgres) attempts complete.")
         except Exception:
-            # 2. Try SQLite (Local) - No IF NOT EXISTS
+            # 2. Try SQLite (Local)
             try:
                 conn.execute(text("ALTER TABLE leads ADD COLUMN run_id VARCHAR"))
                 conn.commit()
@@ -80,6 +101,27 @@ async def startup_db():
 
             try:
                 conn.execute(text("ALTER TABLE leads ADD COLUMN icebreaker TEXT"))
+                conn.commit()
+            except: pass
+            
+            # Phase 2 Migrations (SQLite)
+            try:
+                conn.execute(text("ALTER TABLE leads ADD COLUMN telegram_channel VARCHAR"))
+                conn.commit()
+            except: pass
+            
+            try:
+                conn.execute(text("ALTER TABLE leads ADD COLUMN launch_date TIMESTAMP"))
+                conn.commit()
+            except: pass
+            
+            try:
+                conn.execute(text("ALTER TABLE leads ADD COLUMN chains VARCHAR"))
+                conn.commit()
+            except: pass
+            
+            try:
+                conn.execute(text("ALTER TABLE leads ADD COLUMN tags VARCHAR"))
                 conn.commit()
             except: pass
             
