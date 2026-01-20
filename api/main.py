@@ -203,6 +203,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(debug_router, prefix="/api", tags=["debug"])
+
 @app.get("/", include_in_schema=False)
 def root():
     return RedirectResponse(url="/dashboard")
