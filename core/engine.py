@@ -245,6 +245,14 @@ class StratosphereEngine:
             # Create NEW Verified Lead
             description = raw.extra_data.get("description") or f"Discovered on {raw.source}"
             
+            # QUALITY FILTER (Anti-Spam)
+            # If a lead has NO Twitter AND NO Website, it is considered "bland"/useless.
+            if not norm_handle and not raw.website:
+                # Exception: unless it has a strong Telegram signal
+                if not norm_telegram:
+                     self.logger.info(f"Skipping Low Quality Lead (No Socials): {raw.name}")
+                     return False
+            
             # SCORING SYSTEM (Quality Check)
             score = 0
             if norm_telegram: score += 30 # Strongest Signal
