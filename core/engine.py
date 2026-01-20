@@ -199,47 +199,14 @@ class StratosphereEngine:
             launch_date = raw.extra_data.get("launch_date")
 
             if existing:
-                # MERGE / UPDATE
-                updated = False
+                # DEDUPLICATION: Strict Mode
+                # User Request: "Ignore if twitter already seen"
+                # If we matched based on a unique identifier (Handle or Telegram), it is a duplicate.
+                # We will NOT bump it or merge it to avoid cluttering specific run stats.
                 
-                # If we found missing info, update it
-                if not existing.telegram_channel and norm_telegram:
-                    existing.telegram_channel = norm_telegram
-                    existing.telegram_url = telegram
-                    updated = True
-                
-                if not existing.twitter_handle and norm_handle:
-                    existing.twitter_handle = f"@{norm_handle}"
-                    existing.normalized_handle = norm_handle
-                    updated = True
-                    
-                if not existing.domain and raw.website:
-                    existing.domain = raw.website
-                    existing.normalized_domain = norm_domain
-                    updated = True
-
-                if not existing.launch_date and launch_date:
-                    existing.launch_date = launch_date
-                    updated = True
-
-                # Determine if we should bump status?
-                # If it's "Archived" but now we found it on "Upcoming ICO", maybe revive?
-                # For now, just track update.
-                
-                # Add Source Log
-                source_entry = LeadSource(
-                    lead=existing,
-                    source_name=raw.source,
-                    source_url=raw.website
-                )
-                db.add(source_entry)
-                existing.source_counts += 1
-                
-                if updated:
-                    self.state["stats"]["merged_updates"] += 1
-                    db.commit()
-                else:
-                    self.state["stats"]["duplicates_skipped"] += 1
+                self.state["stats"]["duplicates_skipped"] += 1
+                # Optional: Only update missing fields silently?
+                # For now, completely skip to satisfy "Don't add repeats" requirement visual.
                 return False
                 
             # Create NEW Verified Lead

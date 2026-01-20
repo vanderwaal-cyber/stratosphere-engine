@@ -17,35 +17,40 @@ class DeFiLlamaCollector(BaseCollector):
             data = await self.fetch_page(f"{self.api_url}/protocols")
             protocols = json.loads(data)
             
-            # Filter: Listed in last 90 days OR High TVL Growth
-            # 90 days = 7776000 seconds
+            # Filter: Listed in last 7 days AND TVL > $10k
+            # 7 days = 604800 seconds
             now = time.time()
-            recent_threshold = now - (90 * 24 * 3600)
+            recent_threshold = now - (7 * 24 * 3600)
+            min_tvl = 10000
             
             # Sort by listedAt (Newest first)
-            # listedAt is unix timestamp (if available, mostly yes)
             def get_listed(p): return p.get('listedAt', 0) or 0
             
+            # strict filter
             new_protocols = sorted(
-                [p for p in protocols if isinstance(p.get('listedAt'), (int, float))], 
+                [p for p in protocols if isinstance(p.get('listedAt'), (int, float)) and p.get('listedAt') > recent_threshold and p.get('tvl', 0) >= min_tvl], 
                 key=get_listed, 
                 reverse=True
             )
             
-            # Take a random slice of the top 300 to ensure variety on each run
-            import random
-            start_index = random.randint(0, 50)
-            targets = new_protocols[start_index : start_index + 100]
+            # Take all valid new ones (usually small number for 7 days)
+            targets = new_protocols
             
+            self.logger.info(f"DeFiLlama: Found {len(targets)} protocols listed in last 7d with TVL > $10k")
+
             for p in targets:
                 # DeFiLlama usually provides website and twitter!
-                # This is HIGH QUALITY.
                 website = p.get('url')
-                twitter = p.get('twitter') # Just handle usually
+                twitter = p.get('twitter') 
                 
+                # STRICT REQUIREMENT: Must have Twitter for outreach
+                if not twitter: continue
+
                 # Cleanup twitter handle
-                if twitter and "twitter.com" in twitter:
+                if "twitter.com" in twitter or "x.com" in twitter:
                     twitter = twitter.split('/')[-1]
+                
+                if "?" in twitter: twitter = twitter.split("?")[0]
                 
                 if not website:
                     continue
