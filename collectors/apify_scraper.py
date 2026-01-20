@@ -101,9 +101,27 @@ class ApifyXCollector(BaseCollector):
                 
                 try:
                     text = item.get("text", "") or item.get("fullText", "")
-                    user_data = item.get("author", {}) or item.get("user", {})
-                    username = user_data.get("userName") or user_data.get("screen_name")
                     
+                    # Robust Username Extraction (Handles Simple + GraphQL formats)
+                    user_data = item.get("author", {}) or item.get("user", {})
+                    username = user_data.get("userName") or user_data.get("screen_name") or user_data.get("username")
+                    
+                    # Fallback: Deep GraphQL Extraction (item -> core -> user_results -> result -> legacy -> screen_name)
+                    if not username:
+                        try:
+                            # Try standard GraphQL path
+                            core = item.get("core", {})
+                            res = core.get("user_results", {}).get("result", {})
+                            username = res.get("legacy", {}).get("screen_name")
+                        except: pass
+                        
+                    if not username:
+                        try:
+                            # Try nested 'user' object structure seen in recent Apify updates
+                            legacy = item.get("user", {}).get("result", {}).get("legacy", {})
+                            username = legacy.get("screen_name")
+                        except: pass
+
                     if not username: continue
                     
                     # Links
