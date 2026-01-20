@@ -1,16 +1,13 @@
 
 from fastapi import APIRouter, HTTPException
-from collectors.apify_scraper import ApifyXCollector
-import asyncio
-
-router = APIRouter()
-
 @router.get("/debug/apify")
 async def debug_apify():
     """
     Directly triggers the Apify Collector and returns the first 5 results.
     Bypasses Database and Deduplication.
     """
+    # Lazy Import to prevent Circular Import crashing Main
+    from collectors.apify_scraper import ApifyXCollector
     collector = ApifyXCollector()
     
     try:
