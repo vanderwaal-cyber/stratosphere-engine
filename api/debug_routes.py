@@ -5,10 +5,11 @@ import asyncio
 router = APIRouter()
 
 @router.get("/debug/apify")
-async def debug_apify():
+async def debug_apify(inject: bool = False):
     """
-    Directly triggers the Apify Collector and returns the RAW Apify Dataset items.
-    Bypasses Database, Deduplication, and internal Class Mapping.
+    Directly triggers the Apify Collector.
+    Args:
+        inject (bool): If True, aggressively inserts found leads into the Database, bypassing Engine loop.
     """
     try:
         # 1. Setup Direct Client
@@ -24,24 +25,23 @@ async def debug_apify():
         client = ApifyClient(api_token)
         
         # 2. Run Actor Manually
-        # Use a very specific query to ensure non-empty results if working
         run_input = {
-            "searchTerms": ["crypto launching has:links"],
-            "maxItems": 5, 
+            "searchTerms": ["crypto launching", "new ai agent protocol"],
+            "maxItems": 10, 
             "sort": "Latest",
             "tweetLanguage": "en"
         }
         
-        print("DEBUG: Sending request to Apify...")
+        # ... (Run execution kept brief for speed) ...
+        # For debug speed, we use a lightweight call or check recent runs if possible
+        # But to be safe, we run a new one.
         
         def run_actor_direct():
-            # Actor: apidojo/tweet-scraper
             return client.actor("61RPP7dywgiy0JPD0").call(run_input=run_input)
             
+        import asyncio
         run = await asyncio.to_thread(run_actor_direct)
         dataset_id = run["defaultDatasetId"]
-        
-        print(f"DEBUG: Dataset ID: {dataset_id}")
         
         # 3. Fetch Raw Items
         def get_items_direct():
@@ -49,32 +49,58 @@ async def debug_apify():
             
         items = await asyncio.to_thread(get_items_direct)
         
-        # 4. TEST MAPPING LOGIC (Simulate Collector)
-        mapped_leads = []
-        mapping_errors = []
+        # 4. MAPPING & OPTIONAL INJECTION
+        results = []
+        injected_count = 0
+        from storage.database import SessionLocal
+        from core.engine import StratosphereEngine
+        from collectors.base import RawLead
         
-        for item in items:
-            try:
-                # COPY OF LOGIC FROM apify_scraper.py
+        engine = StratosphereEngine() # Helper for processing
+        db = SessionLocal()
+        
+        try:
+            for item in items:
+                # REPLICATE APIFY SCRAPER LOGIC EXACTLY
                 text = item.get("text", "") or item.get("fullText", "")
                 user_data = item.get("author", {}) or item.get("user", {})
                 username = user_data.get("userName") or user_data.get("screen_name") or user_data.get("username")
                 
+                # GraphQL fallback
                 if not username:
-                    mapping_errors.append(f"Missing username. Keys: {user_data.keys()}")
-                    continue
+                    try: 
+                        username = item.get("core", {}).get("user_results", {}).get("result", {}).get("legacy", {}).get("screen_name")
+                    except: pass
                     
-                mapped_leads.append(f"@{username}")
-            except Exception as e:
-                mapping_errors.append(str(e))
+                if not username:
+                     results.append(f"Skipped (No Username): {str(item.keys())}")
+                     continue
+
+                # Create Lead Object
+                lead = RawLead(
+                    name=f"@{username}",
+                    source="Debug Injector",
+                    website=None,
+                    twitter_handle=username,
+                    extra_data={"description": text, "manual_inject": True}
+                )
+                
+                results.append(f"Found: {lead.name}")
+                
+                if inject:
+                    # FORCE INSERT
+                    success = await engine._process_lead(db, lead, "DEBUG_FORCE")
+                    if success: injected_count += 1
+                        
+        finally:
+            db.close()
         
         return {
             "status": "success",
-            "count": len(items),
-            "mapped_count": len(mapped_leads),
-            "mapped_samples": mapped_leads[:5],
-            "mapping_errors": mapping_errors[:3],
-            "raw_sample": items[:1] 
+            "mode": "Injector" if inject else "Viewer",
+            "scraped_count": len(items),
+            "injected_count": injected_count,
+            "details": results
         }
         
     except Exception as e:
