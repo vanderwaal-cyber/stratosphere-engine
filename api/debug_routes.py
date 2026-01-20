@@ -26,7 +26,7 @@ async def debug_apify():
         # 2. Run Actor Manually
         # Use a very specific query to ensure non-empty results if working
         run_input = {
-            "queries": ["crypto launching has:links"],
+            "searchTerms": ["crypto launching has:links"],
             "maxItems": 5, 
             "sort": "Latest",
             "tweetLanguage": "en"

@@ -41,8 +41,8 @@ class ApifyXCollector(BaseCollector):
         
         # Reverting to 'apidojo/tweet-scraper' (ID: 61RPP7dywgiy0JPD0) now that user has PAID plan.
         run_input = {
-            "queries": queries,
-            "maxItems": 500, # Aiming for user's goal of 100+ leads
+            "searchTerms": queries, # Changed from 'queries' to 'searchTerms'
+            "maxItems": 500,
             "sort": "Latest",
             "tweetLanguage": "en"
         }
