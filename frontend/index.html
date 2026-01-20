@@ -760,6 +760,19 @@
                 return;
             }
 
+            // CHECK & CLEAR SKELETONS
+            // If the first child has no data-id, we declare the list "dirty" (skeletons present) and clear it.
+            // Or more robustly, remove any element without data-id
+            const existingItems = list.querySelectorAll('[data-id]');
+            if (existingItems.length === 0 && list.children.length > 0) {
+                list.innerHTML = ''; // Start fresh if only skeletons existed
+            } else {
+                // Remove any stray non-lead elements
+                Array.from(list.children).forEach(child => {
+                    if (!child.hasAttribute('data-id')) child.remove();
+                });
+            }
+
             const existingMap = new Map();
             list.querySelectorAll('[data-id]').forEach(el => existingMap.set(parseInt(el.dataset.id), el));
 
