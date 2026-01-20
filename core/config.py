@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     
     # Collection limits
     MAX_CONCURRENT_REQUESTS: int = 5
-    COLLECTOR_TIMEOUT_SECONDS: int = 15
+    COLLECTOR_TIMEOUT_SECONDS: int = 300 # Increased for Apify
     DAILY_LEAD_TARGET: int = 1000
     
     # Outreach
