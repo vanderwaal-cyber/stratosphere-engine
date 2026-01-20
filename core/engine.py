@@ -199,14 +199,30 @@ class StratosphereEngine:
             launch_date = raw.extra_data.get("launch_date")
 
             if existing:
-                # DEDUPLICATION: Strict Mode
-                # User Request: "Ignore if twitter already seen"
-                # If we matched based on a unique identifier (Handle or Telegram), it is a duplicate.
-                # We will NOT bump it or merge it to avoid cluttering specific run stats.
+                # DEDUPLICATION: Strict Mode, BUT with Smart Merge
+                # User Request: "Ignore if twitter already seen" -> Managed by not creating new.
+                # User Request: "If twitter missing... merge/fetch".
                 
+                # Check for MERGE OPPORTUNITY (Enrichment)
+                merged = False
+                if not existing.twitter_handle and norm_handle:
+                    self.logger.info(f"✨ Filling missing X handle for {existing.project_name} from {raw.source}")
+                    existing.twitter_handle = f"@{norm_handle}"
+                    existing.normalized_handle = norm_handle
+                    merged = True
+                    
+                if not existing.telegram_channel and norm_telegram:
+                    existing.telegram_channel = norm_telegram
+                    existing.telegram_url = telegram
+                    merged = True
+                    
+                if merged:
+                    db.commit()
+                    self.state["stats"]["merged_updates"] += 1
+                    return False # We updated, so we are done.
+                
+                # Otherwise, it's a true duplicate with no value-add. Skip.
                 self.state["stats"]["duplicates_skipped"] += 1
-                # Optional: Only update missing fields silently?
-                # For now, completely skip to satisfy "Don't add repeats" requirement visual.
                 return False
                 
             # Create NEW Verified Lead
