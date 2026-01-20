@@ -24,55 +24,53 @@ class ApifyXCollector(BaseCollector):
 
         self.logger.info("Starting Apify X Scrape (Phoenix Mode)...")
 
-        # DYNAMIC KEYWORD SYSTEM (Phoenix Logic)
-        # Randomly select topics to ensure variety every run
+        # DYNAMIC KEYWORD SYSTEM (Production Flood Mode)
         import random
         
-        sectors = [
-            "DePIN", "Real World Assets", "RWA", "AI Agent", "GameFi", 
-            "ZK Rollup", "Layer3", "SocialFi", "Decentralized Science", "DeSci",
-            "Perp Dex", "Yield Optimizer", "Restaking", "EigenLayer", "Liquid Staking",
-            "Privacy Protocol", "On-chain Gaming", "Prediction Market", "Consumer Crypto"
+        # 1. Project-Specific Suffixes (To avoid personal accounts)
+        suffixes = [
+            "protocol", "finance", "labs", "network", "foundation", "swap", "dex", 
+            "exchange", "marketplace", "game", "studios", "chain"
         ]
         
+        # 2. High-Signal Actions
         actions = [
-            "launching", "announced", "live", "beta", "whitelist", "presale", 
-            "testnet", "mainnet", "airdrop", "early access", "waitlist"
+            "whitelist is open", "minting now", "presale live", "airdrop confirmed", 
+            "mainnet launch", "testnet live", "early access", "contract address", 
+            "official link", "join our discord"
         ]
         
         networks = [
-            "Solana", "Base", "Arbitrum", "Monad", "Berachain", "Sei", "Sui", "Aptos"
+            "Solana", "Base", "Arbitrum", "Monad", "Berachain", "Sei", "Sui", "Aptos", "Hyperliquid"
         ]
         
-        # Generator: Create 5 unique comprehensive queries
+        # Generator: Create 15 AGGRESSIVE queries per run
         queries = []
-        for _ in range(5):
-            sector = random.choice(sectors)
-            action = random.choice(actions)
-            # 50% chance to append a network for specificity
-            # RELAXED: Removed quotes to broaden search matches
-            # RELAXED: Removed 'has:links' from some queries to catch text-only announcements
-            
-            if random.random() > 0.5:
-                query = f"{sector} {action}"  # Broadest
-            else:
-                query = f"{sector} {action} has:links" # Specific
-                
-            if random.random() > 0.7:
+        for _ in range(15):
+             # Strategy A: "Sector + Suffix + Action" (e.g. "DeFi Protocol Whitelist Open")
+             if random.random() > 0.5:
+                 sector = random.choice(suffixes)
+                 action = random.choice(actions)
+                 query = f'"{sector}" "{action}" has:links'
+             
+             # Strategy B: "Network + Project Keyword" (e.g. "Monad Finance Launching")
+             else:
                  net = random.choice(networks)
-                 query += f" {net}"
+                 suffix = random.choice(suffixes)
+                 query = f'"{net} {suffix}" launching'
+                 
+             queries.append(query)
             
-            queries.append(query)
-            
-        # Add one "Safety Net" query to GUARANTEE results
-        queries.append("crypto launching")
-        queries.append("new crypto project")
+        # Safety Nets (Always run these for baseline volume)
+        queries.append("new crypto project launching")
+        queries.append("whitelist spot giveaway protocol")
+        queries.append("presale alert crypto")
         
-        self.logger.info(f"Generated Dynamic Queries: {queries}")
+        self.logger.info(f"Generated 15 High-Volume Queries: {queries}")
 
         run_input = {
             "searchTerms": queries, 
-            "maxItems": 500, # Aiming for user's goal of 100+ leads
+            "maxItems": 1000, # FLOOD MODE: 1000 Tweets per run
             "sort": "Latest",
             "tweetLanguage": "en"
         }
