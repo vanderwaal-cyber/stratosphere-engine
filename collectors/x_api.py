@@ -15,39 +15,28 @@ class XApiCollector(BaseCollector):
             self.logger.warning("X_BEARER_TOKEN not found. Skipping X/Twitter collection.")
             return []
 
-        # Phoenix-inspired "Out-of-Network" Discovery Queries
-        # 20+ High-Signal Queries to flood the pipeline with FRESH leads
+        # "X Fresh Scanner" - Primary Source Logic
+        # Prioritize tweets that explicitly signal a Telegram group => High Intent
         queries = [
-            # --- SECTOR 1: LAUNCH & PRESALE (High Velocity) ---
-            '(("fair launch" OR "stealth launch" OR "presale live" OR "IDO" OR "TGE") (crypto OR defi OR solana OR base chain) min_faves:2 -is:retweet has:links)',
-            '(("whitelist open" OR "beta access" OR "early access") (crypto OR "app chain") min_faves:2 -is:retweet)',
-            '(("contract address" OR "ca:") (solana OR eth OR base) min_faves:5 -is:retweet)',
+            # 1. THE MASTER QUERY (User Spec: Launch + Telegram Link + Engagement)
+            '(("launching" OR "IDO" OR "TGE" OR "testnet" OR "DePIN" OR "AI agent" OR "NFT drop" OR "new protocol") (telegram OR t.me) has:links -is:retweet min_faves:3 min_replies:2)',
             
-            # --- SECTOR 2: NARRATIVES (DePIN / AI / RWA) ---
-            '(("DePIN" OR "Decentralized Physical Infrastructure") ("launching" OR "roadmap" OR "building") min_faves:5 -is:retweet)',
-            '(("AI Agent" OR "Autonomous Agent" OR "on-chain ai") ("live" OR "demo" OR "testing") min_faves:5 -is:retweet)',
-            '(("RWA" OR "Real World Assets") ("tokenizing" OR "live") min_faves:5 -is:retweet)',
+            # 2. Backup: Broad "New Project" discovery (High Precision)
+            '(("fair launch" OR "stealth launch" OR "contract address") (solana OR eth OR base) (t.me OR telegram) -is:retweet min_faves:3)',
             
-            # --- SECTOR 3: GROWTH HACKS (Partnerships / Grants) ---
-            '(("we are hiring" OR "looking for builders") (web3 OR crypto) min_faves:5 -is:retweet)',
-            '(("grant program" OR "hackathon winner") (solana OR eth) min_faves:10 -is:retweet)',
-            
-            # --- SECTOR 4: DISCOVERY BOT SIGNALS ---
-            '(("new listing" OR "just listed") (coingecko OR coinmarketcap) min_faves:10 -is:retweet)'
+            # 3. Narrative Specific (DePIN/AI)
+            '(("DePIN" OR "AI Agent") ("roadmap" OR "whitepaper") (t.me OR telegram) -is:retweet min_faves:3)'
         ]
 
-        # Use a random subset if we have too many, or run all if within limits.
-        # Running all 9 queries * 50 results = 450 leads max per run.
-        
         async with httpx.AsyncClient(headers={"Authorization": f"Bearer {self.bearer_token}"}, timeout=45) as client:
             for query in queries:
                 try:
-                    self.logger.info(f"🔎 Phoenix-Scanning X for: {query[:40]}...")
+                    self.logger.info(f"🔎 X Fresh Scan: {query[:50]}...")
                     resp = await client.get(
                         f"{self.base_url}/tweets/search/recent",
                         params={
                             "query": query,
-                            "max_results": 60, # Bumped to 60 per query x 9 queries = ~540 potential raw leads
+                            "max_results": 100, # Per User Request: 100-200 posts per scan
                             "tweet.fields": "created_at,author_id,entities,public_metrics,text",
                             "expansions": "author_id",
                             "user.fields": "username,description,url,entities,public_metrics"
@@ -56,7 +45,7 @@ class XApiCollector(BaseCollector):
                     
                     if resp.status_code == 429:
                         self.logger.warning("X API Rate Limit hit. Cooling down...")
-                        break # Stop this run, resume next time
+                        break 
                         
                     if resp.status_code != 200:
                         self.logger.error(f"X API Error {resp.status_code}: {resp.text}")
@@ -66,7 +55,7 @@ class XApiCollector(BaseCollector):
                     tweets = data.get("data", [])
                     users = {u["id"]: u for u in data.get("includes", {}).get("users", [])}
                     
-                    self.logger.info(f"   -> Found {len(tweets)} raw signals.")
+                    self.logger.info(f"   -> Found {len(tweets)} candidates.")
                     
                     for tweet in tweets:
                         author_id = tweet.get("author_id")
@@ -75,9 +64,8 @@ class XApiCollector(BaseCollector):
                         
                         if not username: continue
                         
-                        # Metrics for Scoring
+                        # Metrics
                         metrics = tweet.get("public_metrics", {})
-                        likes = metrics.get("like_count", 0)
                         
                         # Extract Links (Deep Search)
                         website = None
@@ -90,26 +78,36 @@ class XApiCollector(BaseCollector):
                                 if "t.me" in expanded or "telegram.me" in expanded: telegram = expanded
                                 else: website = expanded
 
-                        # PRIORITY 2: Tweet Entities
+                        # PRIORITY 2: Tweet Entities (Override if found in tweet text, likely specific to the project)
                         if "entities" in tweet and "urls" in tweet["entities"]:
                             for url in tweet["entities"]["urls"]:
                                 expanded = url.get("expanded_url", "")
                                 if "t.me" in expanded or "telegram.me" in expanded: telegram = expanded
                                 elif not website: website = expanded
-
-                        # AI Opener (Context Aware)
-                        text_lower = tweet.get("text", "").lower()
-                        opener_category = "project"
-                        if "depin" in text_lower: opener_category = "DePIN protocol"
-                        elif "ai" in text_lower: opener_category = "AI agent"
-                        elif "meme" in text_lower: opener_category = "community token"
-                        elif "presale" in text_lower: opener_category = "presale"
                         
-                        icebreaker = f"Hey, saw your new {opener_category} update on X! Engagement looks solid ({likes} likes). Are you looking for growth partners?"
+                        # REQUIREMENT: Only add if we have contact info (Telegram OR Website)
+                        # Given strict query, we likely have Telegram, but double check.
+                        if not telegram and not website:
+                            continue
+
+                        # Generate AI Opener
+                        # Template: "Saw your launch announcement on X—cool [project] on [chain]. Let's chat Telegram partnerships?"
+                        text_lower = tweet.get("text", "").lower()
+                        project_type = "project"
+                        if "depin" in text_lower: project_type = "DePIN protocol"
+                        elif "ai" in text_lower: project_type = "AI agent"
+                        elif "nft" in text_lower: project_type = "NFT collection"
+                        
+                        chain = "your chain"
+                        if "solana" in text_lower or " sol " in text_lower: chain = "Solana"
+                        elif "base" in text_lower: chain = "Base"
+                        elif "eth" in text_lower: chain = "Ethereum"
+                        
+                        icebreaker = f"Saw your launch announcement on X—cool {project_type} on {chain}. Let's chat Telegram partnerships?"
 
                         lead = RawLead(
-                            name=f"@{username} (X)",
-                            source="x_api",
+                            name=f"@{username}",
+                            source="X (Fresh)", # Dashboard Label
                             website=website,
                             twitter_handle=username,
                             profile_image_url=user.get("profile_image_url"), 
@@ -120,7 +118,7 @@ class XApiCollector(BaseCollector):
                                 "author_desc": user.get("description"),
                                 "launch_date": tweet.get("created_at"),
                                 "telegram_channel": telegram,
-                                "tags": [opener_category]
+                                "tags": [project_type]
                             }
                         )
                         lead.extra_data["icebreaker"] = icebreaker
@@ -130,5 +128,5 @@ class XApiCollector(BaseCollector):
                 except Exception as e:
                     self.logger.error(f"X API Search Error: {e}")
                     
-        self.logger.info(f"✅ X API Collection Complete. Yielded {len(leads)} raw leads.")
+        self.logger.info(f"✅ X Fresh Scan Complete. Yielded {len(leads)} leads.")
         return leads
