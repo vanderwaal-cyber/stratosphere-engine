@@ -247,6 +247,7 @@ class StratosphereEngine:
             
             lead = Lead(
                 project_name=raw.name[:100],
+                source=raw.source,
                 domain=raw.website,
                 normalized_domain=norm_domain,
                 twitter_handle=f"@{norm_handle}" if norm_handle else None,

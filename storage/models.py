@@ -14,6 +14,7 @@ class Lead(Base):
     
     project_name = Column(String, index=True)
     description = Column(Text, nullable=True)
+    source = Column(String, index=True) # Primary Source
     source_counts = Column(Integer, default=1)
     
     # Contacts (Raw)

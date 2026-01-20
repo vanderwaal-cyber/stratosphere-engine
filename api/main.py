@@ -76,6 +76,11 @@ async def startup_db():
                 conn.commit()
             except: pass
 
+            try:
+                conn.execute(text("ALTER TABLE leads ADD COLUMN IF NOT EXISTS source VARCHAR"))
+                conn.commit()
+            except: pass
+
             print("Migration (Postgres) attempts complete.")
         except Exception:
             # 2. Try SQLite (Local)
@@ -122,6 +127,11 @@ async def startup_db():
             
             try:
                 conn.execute(text("ALTER TABLE leads ADD COLUMN tags VARCHAR"))
+                conn.commit()
+            except: pass
+            
+            try:
+                conn.execute(text("ALTER TABLE leads ADD COLUMN source VARCHAR"))
                 conn.commit()
             except: pass
             
