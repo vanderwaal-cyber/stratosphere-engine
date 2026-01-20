@@ -49,17 +49,30 @@ async def debug_apify():
             
         items = await asyncio.to_thread(get_items_direct)
         
+        # 4. TEST MAPPING LOGIC (Simulate Collector)
+        mapped_leads = []
+        mapping_errors = []
+        
+        for item in items:
+            try:
+                # COPY OF LOGIC FROM apify_scraper.py
+                text = item.get("text", "") or item.get("fullText", "")
+                user_data = item.get("author", {}) or item.get("user", {})
+                username = user_data.get("userName") or user_data.get("screen_name") or user_data.get("username")
+                
+                if not username:
+                    mapping_errors.append(f"Missing username. Keys: {user_data.keys()}")
+                    continue
+                    
+                mapped_leads.append(f"@{username}")
+            except Exception as e:
+                mapping_errors.append(str(e))
+        
         return {
             "status": "success",
             "count": len(items),
-            "raw_sample": items, 
-            "note": "If this returns data, the scraping is WORKING. The issue is in the Database/Filter layer."
-        }
-        
-    except Exception as e:
-        import traceback
-        return {
-            "status": "error",
-            "error": str(e),
-            "traceback": traceback.format_exc()
+            "mapped_count": len(mapped_leads),
+            "mapped_samples": mapped_leads[:5],
+            "mapping_errors": mapping_errors[:3],
+            "raw_sample": items[:1] 
         }
