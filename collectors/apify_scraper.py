@@ -3,15 +3,13 @@ import os
 import asyncio
 import json
 from typing import List
-from apify_client import ApifyClient
-from collectors.base import BaseCollector, RawLead
-
-from core.config import settings
+from core.config import get_settings
 
 class ApifyXCollector(BaseCollector):
     def __init__(self):
         super().__init__("x_apify")
-        self.api_token = settings.APIFY_API_TOKEN
+        self.settings = get_settings()
+        self.api_token = self.settings.APIFY_API_TOKEN
         self.client = None
         if self.api_token:
             self.client = ApifyClient(self.api_token)
