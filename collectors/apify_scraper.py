@@ -20,7 +20,7 @@ class ApifyXCollector(BaseCollector):
             self.logger.warning("⚠️ APIFY_API_TOKEN not found. Skipping Apify X Scrape.")
             return []
 
-        self.logger.info("🚀 Starting Apify X Scrape (Phoenix Mode)...")
+        self.logger.info("Starting Apify X Scrape (Phoenix Mode)...")
 
         # Queries matching the user's "Broad X Mode"
         # We can be aggressive here because Apify handles the browsing.
@@ -37,29 +37,16 @@ class ApifyXCollector(BaseCollector):
         # Let's use the standard "Search" input for a scraper.
         # Using "apidojo/tweet-scraper" (popular).
         
-        # Structure queries for the actor
+        # Reverting to 'apidojo/tweet-scraper' (ID: 61RPP7dywgiy0JPD0) now that user has PAID plan.
         run_input = {
             "queries": queries,
-            "maxItems": 100, # Per query? Or Total? check actor docs. Usually per run. 
-            "maxItems": 500, # Let's try to get 500 total
+            "maxItems": 500, # Aiming for user's goal of 100+ leads
             "sort": "Latest",
             "tweetLanguage": "en"
         }
 
         try:
-            # Run the Actor
-            # Note: This is synchronous in the library, but we wrap it or just wait.
-            # Ideally we run off-thread, but for now blocking a thread is okay-ish or we use run_input_async if available?
-            # ApifyClient is sync. To use async, we need ApifyClientAsync? 
-            # It's usually fine to block the collector worker for a minute.
-            
-            # Using specific Actor ID for "Tweet Scraper V2" or similar
-            # Actor: "61RPP7dywgiy0JPD0" is Tweet Scraper V2 by apidojo (very popular)
-            
-            self.logger.info("   -> Sending job to Apify (apidojo/tweet-scraper) ...")
-            
-            # Executing loop ensuring we don't block the ENTIRE event loop if possible?
-            # actually we can just use `to_thread`
+            self.logger.info("   -> Sending job to Apify (apidojo/tweet-scraper) [PAID PLAN ACTIVE] ...")
             
             def run_actor():
                 run = self.client.actor("61RPP7dywgiy0JPD0").call(run_input=run_input)
