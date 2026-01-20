@@ -26,7 +26,11 @@ class CoinMarketCapCollector(BaseCollector):
             # 1. Fetch Latest Listings (Limit 200)
             self.logger.info("Fetching CMC Latest Listings...")
             
-            async with httpx.AsyncClient(timeout=self.settings.COLLECTOR_TIMEOUT_SECONDS) as client:
+            # 1. Fetch Latest Listings (Limit 5000)
+            self.logger.info("Fetching CMC Latest Listings...")
+            
+            # Increase timeout for heavy data load
+            async with httpx.AsyncClient(timeout=60.0) as client:
                 # Get latest added
                 resp = await client.get(
                     f"{self.base_url}/v1/cryptocurrency/listings/latest",

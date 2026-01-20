@@ -238,191 +238,179 @@
             </div>
         </header>
 
-        <!-- KPI STATS (Vertical Stack Mobile) -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <!-- Total -->
-            <div class="glass-card p-6 md:p-8 rounded-2xl flex items-center justify-between group cursor-default">
-                <div>
-                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mb-2">Discovered</h3>
-                    <h2 id="stat-total"
-                        class="text-5xl md:text-6xl font-bold text-white group-hover:text-violet-300 transition-colors drop-shadow-md">
-                        0</h2>
-                </div>
-                <div
-                    class="p-5 rounded-2xl bg-violet-500/10 text-violet-400 group-hover:scale-110 group-hover:bg-violet-500/20 group-hover:shadow-[0_0_30px_rgba(139,92,246,0.3)] transition-all duration-500">
-                    <i data-lucide="database" class="w-8 h-8 md:w-10 md:h-10"></i>
-                </div>
-            </div>
+        <!-- KPI STATS (Grid Layout) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
 
-            <!-- Ready -->
-            <div class="glass-card p-6 md:p-8 rounded-2xl flex items-center justify-between group cursor-default">
-                <!-- STAT: Total Discovered -->
-                <div class="glass-card p-6 rounded-2xl relative overflow-hidden group">
-                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <i data-lucide="radar" class="w-16 h-16 text-emerald-400"></i>
-                    </div>
-                    <div class="relative z-10">
-                        <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Total Signals</p>
-                        <h2 id="stat-total" class="text-4xl font-black text-white tracking-tight">0</h2>
-                        <div class="mt-2 flex items-center gap-2">
-                            <span
-                                class="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20 font-mono">ALL
-                                SOURCES</span>
-                        </div>
-                    </div>
+            <!-- STAT: Total Discovered -->
+            <div class="glass-card p-5 rounded-2xl relative overflow-hidden group hover:bg-white/5 transition-colors">
+                <div class="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <i data-lucide="radar" class="w-12 h-12 text-emerald-400"></i>
                 </div>
-
-                <!-- STAT: Telegram Leads (PRIORITY) -->
-                <div
-                    class="glass-card p-6 rounded-2xl relative overflow-hidden group border-blue-500/20 shadow-[0_0_20px_rgba(59,130,246,0.1)]">
-                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <i data-lucide="send" class="w-16 h-16 text-blue-400"></i>
-                    </div>
-                    <div class="relative z-10">
-                        <p class="text-xs font-bold text-blue-400 uppercase tracking-widest mb-1">Telegram Ready</p>
-                        <h2 id="stat-telegram" class="text-4xl font-black text-white tracking-tight">0</h2>
-                        <div class="mt-2 flex items-center gap-2">
-                            <span
-                                class="text-[10px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded border border-blue-500/20 font-mono">PRIORITY</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- STAT: Ready to DM -->
-                <div class="glass-card p-6 rounded-2xl relative overflow-hidden group">
-                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <i data-lucide="rocket" class="w-16 h-16 text-emerald-400"></i>
-                    </div>
-                    <div class="relative z-10">
-                        <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Qualified</p>
-                        <h2 id="stat-ready" class="text-4xl font-black text-white tracking-tight">0</h2>
-                    </div>
-                </div>
-
-                <!-- STAT: Sources Breakdown -->
-                <div class="glass-card p-4 rounded-2xl relative overflow-hidden col-span-1 md:col-span-1">
-                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Sources</p>
-                    <div id="source-list" class="space-y-2 text-xs">
-                        <div class="flex justify-between text-gray-500"><span>Loading...</span></div>
+                <div class="relative z-10">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Total Signals</p>
+                    <h2 id="stat-total" class="text-3xl font-black text-white tracking-tight">0</h2>
+                    <div class="mt-2 flex items-center gap-2">
+                        <span
+                            class="text-[9px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20 font-mono">ALL
+                            SOURCES</span>
                     </div>
                 </div>
             </div>
 
-            <!-- MAIN FEED -->
+            <!-- STAT: Telegram Leads (PRIORITY) -->
             <div
-                class="glass-panel rounded-2xl flex flex-col h-[calc(100vh-480px)] min-h-[500px] border-t border-white/10 shadow-2xl relative overflow-hidden">
-                <!-- Feed Headers -->
-                <div
-                    class="p-5 border-b border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0 bg-black/20 backdrop-blur-xl z-20">
-                    <div class="flex items-center gap-3">
-                        <h3 class="text-lg font-bold text-white flex items-center gap-3">
-                            <i data-lucide="list-filter" class="w-5 h-5 text-violet-400"></i> Lead Stream
-                        </h3>
-
-                        <div id="progress-container"
-                            class="hidden w-32 h-1.5 bg-gray-800 rounded-full overflow-hidden shadow-inner">
-                            <div id="progress-bar"
-                                class="h-full bg-gradient-to-r from-violet-600 to-indigo-400 transition-all duration-500 w-0">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div
-                        class="flex p-1 bg-black/40 rounded-xl border border-white/5 overflow-x-auto no-scrollbar shadow-inner">
-                        <button onclick="setFilter('READY_TO_DM')" id="tab-ready"
-                            class="flex-1 whitespace-nowrap px-5 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition-colors uppercase tracking-wider">Ready
-                            to DM</button>
-                        <button onclick="setFilter('NEEDS_ALT_OUTREACH')" id="tab-ai"
-                            class="flex-1 whitespace-nowrap px-5 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition-colors uppercase tracking-wider">AI
-                            Required</button>
-                        <button onclick="setFilter('')" id="tab-all"
-                            class="flex-1 whitespace-nowrap px-5 py-2 text-xs font-bold rounded-lg bg-violet-600 text-white shadow-[0_0_15px_rgba(124,58,237,0.4)] transition-all uppercase tracking-wider">All
-                            Signals</button>
+                class="glass-card p-5 rounded-2xl relative overflow-hidden group border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.15)] hover:bg-blue-500/5 transition-colors">
+                <div class="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <i data-lucide="send" class="w-12 h-12 text-blue-400"></i>
+                </div>
+                <div class="relative z-10">
+                    <p class="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1">Telegram Ready</p>
+                    <h2 id="stat-telegram" class="text-3xl font-black text-white tracking-tight">0</h2>
+                    <div class="mt-2 flex items-center gap-2">
+                        <span
+                            class="text-[9px] bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/20 font-mono">PRIORITY</span>
                     </div>
                 </div>
+            </div>
 
-                <!-- Feed Content -->
-                <div id="lead-list" class="flex-1 overflow-y-auto p-5 space-y-3 scroll-smooth no-scrollbar">
-                    <!-- LEADS WILL RENDER HERE -->
+            <!-- STAT: Ready to DM -->
+            <div class="glass-card p-5 rounded-2xl relative overflow-hidden group hover:bg-white/5 transition-colors">
+                <div class="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <i data-lucide="rocket" class="w-12 h-12 text-amber-400"></i>
+                </div>
+                <div class="relative z-10">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Qualified</p>
+                    <h2 id="stat-ready" class="text-3xl font-black text-white tracking-tight">0</h2>
+                    <div class="mt-2 text-[10px] text-gray-500">
+                        High confidence leads
+                    </div>
+                </div>
+            </div>
+
+            <!-- STAT: Sources Breakdown -->
+            <div class="glass-card p-4 rounded-2xl relative overflow-hidden flex flex-col justify-center">
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Sources</p>
+                <div id="source-list" class="space-y-1.5 overflow-y-auto max-h-[80px] pr-1 scrollbar-thin">
+                    <div class="flex justify-between text-gray-500 text-[10px]"><span>Loading...</span></div>
                 </div>
             </div>
         </div>
 
-        <script>
-            // Dynamic API URL for both Local and Prod
-            const API_URL = window.location.origin;
-            let isRunning = false;
-            let pollingInterval = null;
-            let currentFilter = '';
-            let currentRunId = null;
+        <!-- MAIN FEED -->
+        <div
+            class="glass-panel rounded-2xl flex flex-col h-[calc(100vh-480px)] min-h-[500px] border-t border-white/10 shadow-2xl relative overflow-hidden">
+            <!-- Feed Headers -->
+            <div
+                class="p-5 border-b border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0 bg-black/20 backdrop-blur-xl z-20">
+                <div class="flex items-center gap-3">
+                    <h3 class="text-lg font-bold text-white flex items-center gap-3">
+                        <i data-lucide="list-filter" class="w-5 h-5 text-violet-400"></i> Lead Stream
+                    </h3>
 
-            const $ = (id) => document.getElementById(id);
-            const setVal = (id, val) => { const el = $(id); if (el) el.textContent = val; };
-            const setHtml = (id, html) => { const el = $(id); if (el) el.innerHTML = html; };
-            const setClass = (id, cls) => { const el = $(id); if (el) el.className = cls; };
-            const show = (id) => { const el = $(id); if (el) el.classList.remove('hidden'); };
-            const hide = (id) => { const el = $(id); if (el) el.classList.add('hidden'); };
+                    <div id="progress-container"
+                        class="hidden w-32 h-1.5 bg-gray-800 rounded-full overflow-hidden shadow-inner">
+                        <div id="progress-bar"
+                            class="h-full bg-gradient-to-r from-violet-600 to-indigo-400 transition-all duration-500 w-0">
+                        </div>
+                    </div>
+                </div>
 
-            // --- TOAST SYSTEM ---
-            function showToast(msg, type = 'info') {
-                const container = $('toast-container');
-                if (!container) return;
+                <div
+                    class="flex p-1 bg-black/40 rounded-xl border border-white/5 overflow-x-auto no-scrollbar shadow-inner">
+                    <button onclick="setFilter('READY_TO_DM')" id="tab-ready"
+                        class="flex-1 whitespace-nowrap px-5 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition-colors uppercase tracking-wider">Ready
+                        to DM</button>
+                    <button onclick="setFilter('NEEDS_ALT_OUTREACH')" id="tab-ai"
+                        class="flex-1 whitespace-nowrap px-5 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition-colors uppercase tracking-wider">AI
+                        Required</button>
+                    <button onclick="setFilter('')" id="tab-all"
+                        class="flex-1 whitespace-nowrap px-5 py-2 text-xs font-bold rounded-lg bg-violet-600 text-white shadow-[0_0_15px_rgba(124,58,237,0.4)] transition-all uppercase tracking-wider">All
+                        Signals</button>
+                </div>
+            </div>
 
-                const el = document.createElement('div');
-                el.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl backdrop-blur-md shadow-2xl border transition-all duration-300 transform translate-x-10 opacity-0 ${type === 'error' ? 'bg-red-500/20 border-red-500/30 text-red-200' :
-                    type === 'success' ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-200' :
-                        'bg-violet-500/20 border-violet-500/30 text-white'
-                    }`;
+            <!-- Feed Content -->
+            <div id="lead-list" class="flex-1 overflow-y-auto p-5 space-y-3 scroll-smooth no-scrollbar">
+                <!-- LEADS WILL RENDER HERE -->
+            </div>
+        </div>
+    </div>
 
-                let icon = type === 'error' ? 'alert-circle' : type === 'success' ? 'check-circle' : 'info';
+    <script>
+        // Dynamic API URL for both Local and Prod
+        const API_URL = window.location.origin;
+        let isRunning = false;
+        let pollingInterval = null;
+        let currentFilter = '';
+        let currentRunId = null;
 
-                el.innerHTML = `
+        const $ = (id) => document.getElementById(id);
+        const setVal = (id, val) => { const el = $(id); if (el) el.textContent = val; };
+        const setHtml = (id, html) => { const el = $(id); if (el) el.innerHTML = html; };
+        const setClass = (id, cls) => { const el = $(id); if (el) el.className = cls; };
+        const show = (id) => { const el = $(id); if (el) el.classList.remove('hidden'); };
+        const hide = (id) => { const el = $(id); if (el) el.classList.add('hidden'); };
+
+        // --- TOAST SYSTEM ---
+        function showToast(msg, type = 'info') {
+            const container = $('toast-container');
+            if (!container) return;
+
+            const el = document.createElement('div');
+            el.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl backdrop-blur-md shadow-2xl border transition-all duration-300 transform translate-x-10 opacity-0 ${type === 'error' ? 'bg-red-500/20 border-red-500/30 text-red-200' :
+                type === 'success' ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-200' :
+                    'bg-violet-500/20 border-violet-500/30 text-white'
+                }`;
+
+            let icon = type === 'error' ? 'alert-circle' : type === 'success' ? 'check-circle' : 'info';
+
+            el.innerHTML = `
                         <i data-lucide="${icon}" class="w-5 h-5"></i>
                         <span class="text-xs font-bold tracking-wide">${msg}</span>
                     `;
 
-                container.appendChild(el);
-                if (window.lucide) lucide.createIcons();
+            container.appendChild(el);
+            if (window.lucide) lucide.createIcons();
 
-                // Animate In
-                requestAnimationFrame(() => {
-                    el.classList.remove('translate-x-10', 'opacity-0');
-                });
-
-                // Remove
-                setTimeout(() => {
-                    el.classList.add('translate-x-10', 'opacity-0');
-                    setTimeout(() => el.remove(), 300);
-                }, 4000);
-            }
-
-            document.addEventListener('DOMContentLoaded', () => {
-                if (window.lucide) lucide.createIcons();
-                const logo = $('logo-img');
-                if (logo) logo.src = '/assets/brand_logo.jpg?v=' + new Date().getTime();
-                const btn = $('btn-generate');
-                if (btn) btn.onclick = handleGenerate;
-
-                fetchData();
-                startPolling();
+            // Animate In
+            requestAnimationFrame(() => {
+                el.classList.remove('translate-x-10', 'opacity-0');
             });
 
-            function generateUUID() {
-                return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-                    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-                    return v.toString(16);
-                });
-            }
+            // Remove
+            setTimeout(() => {
+                el.classList.add('translate-x-10', 'opacity-0');
+                setTimeout(() => el.remove(), 300);
+            }, 4000);
+        }
 
-            function renderSkeletons() {
-                const list = $('lead-list');
-                if (!list) return;
-                list.innerHTML = ''; // Clear
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.lucide) lucide.createIcons();
+            const logo = $('logo-img');
+            if (logo) logo.src = '/assets/brand_logo.jpg?v=' + new Date().getTime();
+            const btn = $('btn-generate');
+            if (btn) btn.onclick = handleGenerate;
 
-                // Generate 5 Skeletons
-                let html = '';
-                for (let i = 0; i < 5; i++) {
-                    html += `
+            fetchData();
+            startPolling();
+        });
+
+        function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        function renderSkeletons() {
+            const list = $('lead-list');
+            if (!list) return;
+            list.innerHTML = ''; // Clear
+
+            // Generate 5 Skeletons
+            let html = '';
+            for (let i = 0; i < 5; i++) {
+                html += `
                         <div class="p-5 rounded-2xl glass-card flex items-start gap-4 border border-white/5 relative overflow-hidden">
                              <div class="w-12 h-12 rounded-xl bg-white/5 skeleton-pulse shrink-0"></div>
                              <div class="flex-1 space-y-3">
@@ -434,300 +422,300 @@
                                 <div class="h-3 w-1/2 bg-white/5 rounded skeleton-pulse"></div>
                              </div>
                         </div>`;
-                }
-                list.innerHTML = html;
             }
+            list.innerHTML = html;
+        }
 
-            async function handleGenerate() {
-                if (isRunning) return;
+        async function handleGenerate() {
+            if (isRunning) return;
 
-                // Check Auto-Pilot
-                const autoPilotToggle = $('auto-pilot-toggle');
-                const isAuto = autoPilotToggle ? autoPilotToggle.checked : false;
+            // Check Auto-Pilot
+            const autoPilotToggle = $('auto-pilot-toggle');
+            const isAuto = autoPilotToggle ? autoPilotToggle.checked : false;
 
-                setLoadingState(true, isAuto ? "Auto-Pilot: Initializing..." : "Radar Active: Initializing...");
-                currentRunId = generateUUID();
+            setLoadingState(true, isAuto ? "Auto-Pilot: Initializing..." : "Radar Active: Initializing...");
+            currentRunId = generateUUID();
 
-                renderSkeletons(); // SHOW SKELETONS
+            renderSkeletons(); // SHOW SKELETONS
 
-                try {
-                    const modeSelect = $('run-mode');
-                    const mode = modeSelect ? modeSelect.value : 'fresh';
+            try {
+                const modeSelect = $('run-mode');
+                const mode = modeSelect ? modeSelect.value : 'fresh';
 
-                    const res = await fetch(`${API_URL}/pipeline/run`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ mode: mode, run_id: currentRunId, auto_pilot: isAuto })
-                    });
-
-                    if (!res.ok) throw new Error("Server refused connection");
-
-                    const data = await res.json();
-                    if (data.status === 'busy') {
-                        showToast("System is busy. Please wait.", "error");
-                    } else {
-                        const bar = $('progress-bar');
-                        if (bar) bar.style.width = '5%';
-                        startPolling();
-                    }
-                } catch (e) {
-                    showToast(`Start Failed: ${e.message}`, "error");
-                    setLoadingState(false);
-                    fetchData();
-                }
-            }
-
-            // ... stopPipeline (keep same but use toast) ...
-
-            async function stopPipeline() {
-                if (!confirm("Confirm Emergency Stop?")) return;
-                try {
-                    await fetch(`${API_URL}/pipeline/stop`, { method: 'POST' });
-                    const btn = $('btn-stop');
-                    if (btn) btn.textContent = "Halting...";
-                    showToast("Emergency Stop Initiated", "info");
-
-                    setTimeout(() => {
-                        setLoadingState(false);
-                        fetchData();
-                    }, 2000);
-                } catch (e) {
-                    showToast("Stop Failed: " + e.message, "error");
-                }
-            }
-
-            // ... setFilter ...
-
-            function setFilter(bucket) {
-                currentFilter = bucket;
-                document.querySelectorAll('button[id^="tab-"]').forEach(btn => {
-                    btn.className = "flex-1 whitespace-nowrap px-5 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition-colors uppercase tracking-wider";
+                const res = await fetch(`${API_URL}/pipeline/run`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode: mode, run_id: currentRunId, auto_pilot: isAuto })
                 });
-                let activeId = 'tab-all';
-                if (bucket === 'READY_TO_DM') activeId = 'tab-ready';
-                if (bucket === 'NEEDS_ALT_OUTREACH') activeId = 'tab-ai';
-                const activeBtn = $(activeId);
-                if (activeBtn) {
-                    activeBtn.className = "flex-1 whitespace-nowrap px-5 py-2 text-xs font-bold rounded-lg bg-violet-600 text-white shadow-[0_0_15px_rgba(124,58,237,0.4)] transition-all uppercase tracking-wider";
+
+                if (!res.ok) throw new Error("Server refused connection");
+
+                const data = await res.json();
+                if (data.status === 'busy') {
+                    showToast("System is busy. Please wait.", "error");
+                } else {
+                    const bar = $('progress-bar');
+                    if (bar) bar.style.width = '5%';
+                    startPolling();
                 }
+            } catch (e) {
+                showToast(`Start Failed: ${e.message}`, "error");
+                setLoadingState(false);
                 fetchData();
             }
+        }
 
-            function startPolling() {
-                if (pollingInterval) return;
-                pollStatus();
-                pollingInterval = setInterval(pollStatus, 2000);
-                setInterval(() => { if (!isRunning) fetchData(); }, 30000);
+        // ... stopPipeline (keep same but use toast) ...
+
+        async function stopPipeline() {
+            if (!confirm("Confirm Emergency Stop?")) return;
+            try {
+                await fetch(`${API_URL}/pipeline/stop`, { method: 'POST' });
+                const btn = $('btn-stop');
+                if (btn) btn.textContent = "Halting...";
+                showToast("Emergency Stop Initiated", "info");
+
+                setTimeout(() => {
+                    setLoadingState(false);
+                    fetchData();
+                }, 2000);
+            } catch (e) {
+                showToast("Stop Failed: " + e.message, "error");
             }
+        }
 
-            async function pollStatus() {
-                try {
-                    const res = await fetch(`${API_URL}/pipeline/status`);
-                    if (!res.ok) return;
-                    const state = await res.json();
-                    renderStatus(state);
+        // ... setFilter ...
 
-                    const bar = $('progress-bar');
+        function setFilter(bucket) {
+            currentFilter = bucket;
+            document.querySelectorAll('button[id^="tab-"]').forEach(btn => {
+                btn.className = "flex-1 whitespace-nowrap px-5 py-2 text-xs font-bold rounded-lg text-gray-400 hover:text-white transition-colors uppercase tracking-wider";
+            });
+            let activeId = 'tab-all';
+            if (bucket === 'READY_TO_DM') activeId = 'tab-ready';
+            if (bucket === 'NEEDS_ALT_OUTREACH') activeId = 'tab-ai';
+            const activeBtn = $(activeId);
+            if (activeBtn) {
+                activeBtn.className = "flex-1 whitespace-nowrap px-5 py-2 text-xs font-bold rounded-lg bg-violet-600 text-white shadow-[0_0_15px_rgba(124,58,237,0.4)] transition-all uppercase tracking-wider";
+            }
+            fetchData();
+        }
 
-                    if (state.state === 'running') {
-                        if (!isRunning) setLoadingState(true, state.current_step || "Radar Active");
-                        show('progress-container');
-                        if (bar) bar.style.width = `${state.progress}%`;
+        function startPolling() {
+            if (pollingInterval) return;
+            pollStatus();
+            pollingInterval = setInterval(pollStatus, 2000);
+            setInterval(() => { if (!isRunning) fetchData(); }, 30000);
+        }
 
-                        // Dynamic Header Text Upgrade
-                        setVal('loading-text', state.current_step ? state.current_step.replace("Mining", "Scanning") : "Processing...");
+        async function pollStatus() {
+            try {
+                const res = await fetch(`${API_URL}/pipeline/status`);
+                if (!res.ok) return;
+                const state = await res.json();
+                renderStatus(state);
 
-                        updateStats(state);
-                    } else {
-                        if (isRunning) {
-                            setLoadingState(false);
-                            hide('progress-container');
-                            if (bar) bar.style.width = '0%';
-                            fetchData();
-                            if (state.state === 'error') {
-                                showToast("Engine Alert: " + state.current_step, "error");
-                            } else {
-                                showToast("Scan Complete. Database Updated.", "success");
-                            }
+                const bar = $('progress-bar');
+
+                if (state.state === 'running') {
+                    if (!isRunning) setLoadingState(true, state.current_step || "Radar Active");
+                    show('progress-container');
+                    if (bar) bar.style.width = `${state.progress}%`;
+
+                    // Dynamic Header Text Upgrade
+                    setVal('loading-text', state.current_step ? state.current_step.replace("Mining", "Scanning") : "Processing...");
+
+                    updateStats(state);
+                } else {
+                    if (isRunning) {
+                        setLoadingState(false);
+                        hide('progress-container');
+                        if (bar) bar.style.width = '0%';
+                        fetchData();
+                        if (state.state === 'error') {
+                            showToast("Engine Alert: " + state.current_step, "error");
+                        } else {
+                            showToast("Scan Complete. Database Updated.", "success");
                         }
                     }
-                } catch (e) {
-                    // Silent
                 }
+            } catch (e) {
+                // Silent
             }
+        }
 
-            function renderStatus(state) {
-                // ... keep existing renderStatus ...
-                const statusEl = $('status-text');
-                const indicator = $('status-indicator');
-                if (!statusEl || !indicator) return;
+        function renderStatus(state) {
+            // ... keep existing renderStatus ...
+            const statusEl = $('status-text');
+            const indicator = $('status-indicator');
+            if (!statusEl || !indicator) return;
 
-                let text = "Idle";
-                let colorClass = "text-gray-400";
-                let dotClass = "bg-gray-500 shadow-none";
+            let text = "Idle";
+            let colorClass = "text-gray-400";
+            let dotClass = "bg-gray-500 shadow-none";
 
-                switch (state.state) {
-                    case "running":
-                        text = state.current_step ? state.current_step.split('(')[0] : "ACTIVE"; // Simplified
-                        colorClass = "text-emerald-400 font-bold";
-                        dotClass = "bg-emerald-400 shadow-[0_0_10px_currentColor]";
-                        break;
-                    case "error":
-                        text = "OFFLINE";
-                        colorClass = "text-red-400 font-bold";
-                        dotClass = "bg-red-500 shadow-[0_0_10px_currentColor]";
-                        break;
-                    case "done":
-                        text = "ONLINE";
-                        colorClass = "text-emerald-300 font-medium";
-                        dotClass = "bg-emerald-500 shadow-[0_0_10px_currentColor]";
-                        break;
-                }
-                statusEl.textContent = text;
-                statusEl.className = `text-[10px] uppercase tracking-wider ${colorClass}`;
-                indicator.className = `w-2 h-2 rounded-full animate-pulse transition-all duration-300 ${dotClass}`;
+            switch (state.state) {
+                case "running":
+                    text = state.current_step ? state.current_step.split('(')[0] : "ACTIVE"; // Simplified
+                    colorClass = "text-emerald-400 font-bold";
+                    dotClass = "bg-emerald-400 shadow-[0_0_10px_currentColor]";
+                    break;
+                case "error":
+                    text = "OFFLINE";
+                    colorClass = "text-red-400 font-bold";
+                    dotClass = "bg-red-500 shadow-[0_0_10px_currentColor]";
+                    break;
+                case "done":
+                    text = "ONLINE";
+                    colorClass = "text-emerald-300 font-medium";
+                    dotClass = "bg-emerald-500 shadow-[0_0_10px_currentColor]";
+                    break;
             }
+            statusEl.textContent = text;
+            statusEl.className = `text-[10px] uppercase tracking-wider ${colorClass}`;
+            indicator.className = `w-2 h-2 rounded-full animate-pulse transition-all duration-300 ${dotClass}`;
+        }
 
-            async function fetchData() {
-                try {
-                    const timeEl = $('last-updated');
-                    if (timeEl) timeEl.textContent = "Updated: " + new Date().toLocaleTimeString();
+        async function fetchData() {
+            try {
+                const timeEl = $('last-updated');
+                if (timeEl) timeEl.textContent = "Updated: " + new Date().toLocaleTimeString();
 
-                    fetch(`${API_URL}/api/leads/stats`)
-                        .then(res => res.json())
-                        .then(stats => updateStats(stats))
-                        .catch(e => { });
+                fetch(`${API_URL}/api/leads/stats`)
+                    .then(res => res.json())
+                    .then(stats => updateStats(stats))
+                    .catch(e => { });
 
-                    let url = `${API_URL}/api/leads?limit=500`;
-                    if (currentFilter && currentFilter.length > 0) url += `&bucket=${currentFilter}`;
+                let url = `${API_URL}/api/leads?limit=500`;
+                if (currentFilter && currentFilter.length > 0) url += `&bucket=${currentFilter}`;
 
-                    const leadsRes = await fetch(url);
-                    if (!leadsRes.ok) throw new Error("Signal Lost");
+                const leadsRes = await fetch(url);
+                if (!leadsRes.ok) throw new Error("Signal Lost");
 
-                    const leads = await leadsRes.json();
-                    renderLeads(leads);
-                } catch (e) {
-                    showToast("Reconnecting to satellite...", "info"); // Cleaner error
-                }
+                const leads = await leadsRes.json();
+                renderLeads(leads);
+            } catch (e) {
+                showToast("Reconnecting to satellite...", "info"); // Cleaner error
             }
+        }
 
-            function updateStats(stats) {
-                const anim = (id, val) => {
-                    const el = $(id);
-                    if (el && el.textContent != val) animateValue(id, parseInt(el.textContent) || 0, val || 0, 800);
-                };
-                anim('stat-total', stats.total_leads);
-                anim('stat-ready', stats.ready_to_dm);
-                anim('stat-telegram', stats.telegram_leads || 0);
+        function updateStats(stats) {
+            const anim = (id, val) => {
+                const el = $(id);
+                if (el && el.textContent != val) animateValue(id, parseInt(el.textContent) || 0, val || 0, 800);
+            };
+            anim('stat-total', stats.total_leads);
+            anim('stat-ready', stats.ready_to_dm);
+            anim('stat-telegram', stats.telegram_leads || 0);
 
-                // Render Sources
-                const sourceList = $('source-list');
-                if (sourceList && stats.sources) {
-                    let html = '';
-                    // Sort by count desc
-                    Object.entries(stats.sources)
-                        .sort(([, a], [, b]) => b - a)
-                        .forEach(([name, count]) => {
-                            html += `
+            // Render Sources
+            const sourceList = $('source-list');
+            if (sourceList && stats.sources) {
+                let html = '';
+                // Sort by count desc
+                Object.entries(stats.sources)
+                    .sort(([, a], [, b]) => b - a)
+                    .forEach(([name, count]) => {
+                        html += `
                             <div class="flex justify-between items-center">
                                 <span class="text-gray-400 capitalize">${name.replace('_', ' ')}</span>
                                 <span class="font-mono text-emerald-400 bg-emerald-500/10 px-1.5 rounded">${count}</span>
                             </div>`;
-                        });
-                    sourceList.innerHTML = html;
-                }
-            }
-
-            // ... Keep setLoadingState ...
-            function setLoadingState(loading, text = "Processing...") {
-                const btn = $('btn-generate');
-                const stopBtn = $('btn-stop');
-
-                isRunning = loading;
-
-                if (loading) {
-                    if (btn) {
-                        btn.disabled = true;
-                        btn.classList.add('opacity-50', 'cursor-not-allowed', 'grayscale');
-                    }
-                    show('loading-indicator');
-                    show('btn-stop');
-                    setVal('loading-text', text);
-                } else {
-                    if (btn) {
-                        btn.disabled = false;
-                        btn.classList.remove('opacity-50', 'cursor-not-allowed', 'grayscale');
-                    }
-                    hide('loading-indicator');
-                    hide('btn-stop');
-                }
-            }
-
-
-            async function analyzeLead(id, btn) {
-                if (!btn) return;
-                const originalText = btn.innerHTML;
-                btn.disabled = true;
-                btn.innerHTML = `<i data-lucide="loader-2" class="w-3 h-3 animate-spin"></i> Analyzing...`;
-                if (window.lucide) lucide.createIcons();
-
-                try {
-                    const res = await fetch(`${API_URL}/api/leads/${id}/analyze`, { method: 'POST' });
-                    if (!res.ok) throw new Error("Analysis failed");
-                    const data = await res.json();
-
-                    // Success: Refresh data to show result
-                    // But for instant feedback, let's find the card and inject it
-                    const card = document.querySelector(`div[data-id="${id}"]`);
-                    if (card) {
-                        const resultContainer = card.querySelector('.analysis-result');
-                        if (resultContainer) {
-                            resultContainer.innerHTML = renderAnalysisBlock(data);
-                            resultContainer.classList.remove('hidden');
-                            btn.innerHTML = `<i data-lucide="check" class="w-3 h-3"></i> Done`;
-                        }
-                    }
-                    setTimeout(() => fetchData(), 1500); // Full refresh to sync state
-
-                } catch (e) {
-                    showToast(e.message, "error");
-                    btn.disabled = false;
-                    btn.innerHTML = originalText;
-                }
-            }
-
-            async function updateStatus(id, status, bucket) {
-                try {
-                    const res = await fetch(`${API_URL}/api/leads/${id}/status`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ status, bucket })
                     });
-                    if (!res.ok) throw new Error("Update failed");
-                    showToast(`Lead marked as ${status}`, "success");
-                    fetchData(); // Refresh UI
-                } catch (e) {
-                    showToast(e.message, "error");
+                sourceList.innerHTML = html;
+            }
+        }
+
+        // ... Keep setLoadingState ...
+        function setLoadingState(loading, text = "Processing...") {
+            const btn = $('btn-generate');
+            const stopBtn = $('btn-stop');
+
+            isRunning = loading;
+
+            if (loading) {
+                if (btn) {
+                    btn.disabled = true;
+                    btn.classList.add('opacity-50', 'cursor-not-allowed', 'grayscale');
                 }
+                show('loading-indicator');
+                show('btn-stop');
+                setVal('loading-text', text);
+            } else {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed', 'grayscale');
+                }
+                hide('loading-indicator');
+                hide('btn-stop');
             }
+        }
 
-            function openDM(handle, text) {
-                if (!handle) return showToast("No Twitter handle found", "error");
-                navigator.clipboard.writeText(text).then(() => {
-                    showToast("Icebreaker Copied! Opening Profile...", "success");
-                    window.open(`https://twitter.com/${handle.replace('@', '')}`, '_blank');
+
+        async function analyzeLead(id, btn) {
+            if (!btn) return;
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `<i data-lucide="loader-2" class="w-3 h-3 animate-spin"></i> Analyzing...`;
+            if (window.lucide) lucide.createIcons();
+
+            try {
+                const res = await fetch(`${API_URL}/api/leads/${id}/analyze`, { method: 'POST' });
+                if (!res.ok) throw new Error("Analysis failed");
+                const data = await res.json();
+
+                // Success: Refresh data to show result
+                // But for instant feedback, let's find the card and inject it
+                const card = document.querySelector(`div[data-id="${id}"]`);
+                if (card) {
+                    const resultContainer = card.querySelector('.analysis-result');
+                    if (resultContainer) {
+                        resultContainer.innerHTML = renderAnalysisBlock(data);
+                        resultContainer.classList.remove('hidden');
+                        btn.innerHTML = `<i data-lucide="check" class="w-3 h-3"></i> Done`;
+                    }
+                }
+                setTimeout(() => fetchData(), 1500); // Full refresh to sync state
+
+            } catch (e) {
+                showToast(e.message, "error");
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+
+        async function updateStatus(id, status, bucket) {
+            try {
+                const res = await fetch(`${API_URL}/api/leads/${id}/status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status, bucket })
                 });
+                if (!res.ok) throw new Error("Update failed");
+                showToast(`Lead marked as ${status}`, "success");
+                fetchData(); // Refresh UI
+            } catch (e) {
+                showToast(e.message, "error");
             }
+        }
 
-            function renderAnalysisBlock(lead) {
-                if (!lead.ai_analysis) return '';
+        function openDM(handle, text) {
+            if (!handle) return showToast("No Twitter handle found", "error");
+            navigator.clipboard.writeText(text).then(() => {
+                showToast("Icebreaker Copied! Opening Profile...", "success");
+                window.open(`https://twitter.com/${handle.replace('@', '')}`, '_blank');
+            });
+        }
 
-                const analysisHtml = lead.ai_analysis.split('\n').map(line => `<div class="mb-1">${line}</div>`).join('');
+        function renderAnalysisBlock(lead) {
+            if (!lead.ai_analysis) return '';
 
-                // Escape special chars for the onclick handler
-                const safeIcebreaker = (lead.icebreaker || "").replace(/'/g, "\\'").replace(/\n/g, " ");
+            const analysisHtml = lead.ai_analysis.split('\n').map(line => `<div class="mb-1">${line}</div>`).join('');
 
-                return `
+            // Escape special chars for the onclick handler
+            const safeIcebreaker = (lead.icebreaker || "").replace(/'/g, "\\'").replace(/\n/g, " ");
+
+            return `
                 <div class="mt-4 p-4 rounded-xl bg-violet-500/10 border border-violet-500/20 text-xs text-violet-200">
                     <h4 class="font-bold text-violet-300 mb-2 flex items-center gap-2"><i data-lucide="sparkles" class="w-3 h-3"></i> AI Analysis</h4>
                     <div class="space-y-1 opacity-90 leading-relaxed mb-3">${analysisHtml}</div>
@@ -760,79 +748,79 @@
                     </div>
                 </div>
             `;
+        }
+
+        // renderLeads (modified)
+        function renderLeads(leads) {
+            const list = $('lead-list');
+            if (!list) return;
+
+            if (!leads || leads.length === 0) {
+                renderSkeletons();
+                return;
             }
 
-            // renderLeads (modified)
-            function renderLeads(leads) {
-                const list = $('lead-list');
-                if (!list) return;
+            const existingMap = new Map();
+            list.querySelectorAll('[data-id]').forEach(el => existingMap.set(parseInt(el.dataset.id), el));
 
-                if (!leads || leads.length === 0) {
-                    renderSkeletons();
-                    return;
+            leads.forEach((lead, index) => {
+                let el = existingMap.get(lead.id);
+                let isNew = false;
+                if (!el) {
+                    isNew = true;
+                    el = document.createElement('div');
+                    el.dataset.id = lead.id;
+                    el.className = `w-full p-5 rounded-2xl glass-card flex items-start gap-4 group hover:bg-white/5 transition-all relative overflow-hidden`;
+                    el.classList.add('opacity-0', 'snap-fade-in');
+                    el.style.animationDelay = `${Math.min(index * 0.05, 1.0)}s`;
                 }
 
-                const existingMap = new Map();
-                list.querySelectorAll('[data-id]').forEach(el => existingMap.set(parseInt(el.dataset.id), el));
+                const isHot = (lead.score || 0) > 40;
+                if (isHot) el.classList.add('border-orange-500/20', 'bg-orange-500/5');
+                else el.classList.remove('border-orange-500/20', 'bg-orange-500/5');
 
-                leads.forEach((lead, index) => {
-                    let el = existingMap.get(lead.id);
-                    let isNew = false;
-                    if (!el) {
-                        isNew = true;
-                        el = document.createElement('div');
-                        el.dataset.id = lead.id;
-                        el.className = `w-full p-5 rounded-2xl glass-card flex items-start gap-4 group hover:bg-white/5 transition-all relative overflow-hidden`;
-                        el.classList.add('opacity-0', 'snap-fade-in');
-                        el.style.animationDelay = `${Math.min(index * 0.05, 1.0)}s`;
-                    }
+                let chains = [];
+                try { chains = JSON.parse(lead.chains || '[]'); } catch (e) { if (lead.chains) chains = [lead.chains]; }
 
-                    const isHot = (lead.score || 0) > 40;
-                    if (isHot) el.classList.add('border-orange-500/20', 'bg-orange-500/5');
-                    else el.classList.remove('border-orange-500/20', 'bg-orange-500/5');
+                let tags = [];
+                try { tags = JSON.parse(lead.tags || '[]'); } catch (e) { if (lead.tags) tags = [lead.tags]; }
 
-                    let chains = [];
-                    try { chains = JSON.parse(lead.chains || '[]'); } catch (e) { if (lead.chains) chains = [lead.chains]; }
+                let badges = '';
 
-                    let tags = [];
-                    try { tags = JSON.parse(lead.tags || '[]'); } catch (e) { if (lead.tags) tags = [lead.tags]; }
+                // TELEGRAM PRIORITY BADGE
+                if (lead.telegram_channel || lead.telegram_url) {
+                    badges += `<a href="${lead.telegram_url || '#'}" target="_blank" class="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-[0_0_10px_rgba(59,130,246,0.1)] hover:bg-blue-500/20 transition-colors flex items-center gap-1"><i data-lucide="send" class="w-3 h-3"></i> Telegram</a>`;
+                }
 
-                    let badges = '';
+                if (lead.bucket === 'READY_TO_DM') {
+                    badges += `<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-[0_0_10px_rgba(16,185,129,0.1)]">Ready</span>`;
+                } else if (lead.ai_analysis) {
+                    badges += `<span class="bg-violet-500/10 text-violet-400 border border-violet-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-[0_0_10px_rgba(139,92,246,0.1)]">Analyzed</span>`;
+                }
 
-                    // TELEGRAM PRIORITY BADGE
-                    if (lead.telegram_channel || lead.telegram_url) {
-                        badges += `<a href="${lead.telegram_url || '#'}" target="_blank" class="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-[0_0_10px_rgba(59,130,246,0.1)] hover:bg-blue-500/20 transition-colors flex items-center gap-1"><i data-lucide="send" class="w-3 h-3"></i> Telegram</a>`;
-                    }
+                // Chain Badges
+                chains.slice(0, 2).forEach(c => {
+                    badges += `<span class="bg-gray-700/50 text-gray-300 border border-gray-600 px-1.5 py-0.5 rounded text-[9px] font-mono tracking-wide">${c}</span>`;
+                });
 
-                    if (lead.bucket === 'READY_TO_DM') {
-                        badges += `<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-[0_0_10px_rgba(16,185,129,0.1)]">Ready</span>`;
-                    } else if (lead.ai_analysis) {
-                        badges += `<span class="bg-violet-500/10 text-violet-400 border border-violet-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-[0_0_10px_rgba(139,92,246,0.1)]">Analyzed</span>`;
-                    }
+                if (isHot) {
+                    badges = `<span class="bg-orange-500/10 text-orange-400 border border-orange-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1"><i data-lucide="flame" class="w-3 h-3"></i> ${lead.score}</span>` + badges;
+                }
 
-                    // Chain Badges
-                    chains.slice(0, 2).forEach(c => {
-                        badges += `<span class="bg-gray-700/50 text-gray-300 border border-gray-600 px-1.5 py-0.5 rounded text-[9px] font-mono tracking-wide">${c}</span>`;
-                    });
+                const handle = lead.twitter_handle ? lead.twitter_handle.replace('@', '') : '';
+                const pfp = lead.profile_image_url || (handle ? `https://unavatar.io/twitter/${handle}` : `https://ui-avatars.com/api/?name=${lead.project_name}&background=1e293b&color=fff`);
+                let desc = (lead.description || "No description available.").replace(/["{}]/g, "");
 
-                    if (isHot) {
-                        badges = `<span class="bg-orange-500/10 text-orange-400 border border-orange-500/20 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1"><i data-lucide="flame" class="w-3 h-3"></i> ${lead.score}</span>` + badges;
-                    }
+                // Launch Date
+                let launchBadge = '';
+                if (lead.launch_date) {
+                    const d = new Date(lead.launch_date);
+                    launchBadge = `<span class="text-[9px] font-mono text-gray-500 flex items-center gap-1"><i data-lucide="calendar" class="w-3 h-3"></i> ${d.toLocaleDateString()}</span>`;
+                }
 
-                    const handle = lead.twitter_handle ? lead.twitter_handle.replace('@', '') : '';
-                    const pfp = lead.profile_image_url || (handle ? `https://unavatar.io/twitter/${handle}` : `https://ui-avatars.com/api/?name=${lead.project_name}&background=1e293b&color=fff`);
-                    let desc = (lead.description || "No description available.").replace(/["{}]/g, "");
+                const analysisBlock = renderAnalysisBlock(lead);
 
-                    // Launch Date
-                    let launchBadge = '';
-                    if (lead.launch_date) {
-                        const d = new Date(lead.launch_date);
-                        launchBadge = `<span class="text-[9px] font-mono text-gray-500 flex items-center gap-1"><i data-lucide="calendar" class="w-3 h-3"></i> ${d.toLocaleDateString()}</span>`;
-                    }
-
-                    const analysisBlock = renderAnalysisBlock(lead);
-
-                    const html = `
+                const html = `
                             <div class="relative w-12 h-12 shrink-0 group-hover:scale-105 transition-transform duration-500 ease-out">
                                 <img src="${pfp}" alt="Icon" class="w-full h-full rounded-xl object-cover border border-white/10 shadow-lg bg-gray-900" loading="lazy" onerror="this.src='https://ui-avatars.com/api/?name=?'">
                                 ${lead.platform === 'x' ? '<div class="absolute -bottom-1 -right-1 w-5 h-5 bg-black rounded-full flex items-center justify-center border border-gray-800"><i data-lucide="twitter" class="w-3 h-3 text-white"></i></div>' : ''}
@@ -854,7 +842,7 @@
                                      
                                      <!-- Analyze Button -->
                                      ${!lead.ai_analysis ?
-                            `<button onclick="analyzeLead(${lead.id}, this)" class="ml-2 px-3 py-1 bg-violet-600/20 hover:bg-violet-600 text-violet-300 hover:text-white text-[10px] font-bold uppercase rounded-md transition-all flex items-center gap-1 shadow-[0_0_10px_rgba(124,58,237,0.1)] hover:shadow-[0_0_15px_rgba(124,58,237,0.5)]">
+                        `<button onclick="analyzeLead(${lead.id}, this)" class="ml-2 px-3 py-1 bg-violet-600/20 hover:bg-violet-600 text-violet-300 hover:text-white text-[10px] font-bold uppercase rounded-md transition-all flex items-center gap-1 shadow-[0_0_10px_rgba(124,58,237,0.1)] hover:shadow-[0_0_15px_rgba(124,58,237,0.5)]">
                                         <i data-lucide="sparkles" class="w-3 h-3"></i> Analyze
                                       </button>` : ''}
                                 </div>
@@ -866,39 +854,39 @@
                             </div>
                         `;
 
-                    if (el.innerHTML !== html) el.innerHTML = html;
-                    if (isNew) list.appendChild(el);
-                });
-                const currentIds = new Set(leads.map(l => l.id));
-                existingMap.forEach((el, id) => {
-                    if (!currentIds.has(id)) el.remove();
-                });
-                if (window.lucide) lucide.createIcons();
-            }
+                if (el.innerHTML !== html) el.innerHTML = html;
+                if (isNew) list.appendChild(el);
+            });
+            const currentIds = new Set(leads.map(l => l.id));
+            existingMap.forEach((el, id) => {
+                if (!currentIds.has(id)) el.remove();
+            });
+            if (window.lucide) lucide.createIcons();
+        }
 
-            function timeAgo(dateString) {
-                if (!dateString) return '';
-                const sec = Math.floor((new Date() - new Date(dateString)) / 1000);
-                if (sec < 60) return 'now';
-                if (sec < 3600) return Math.floor(sec / 60) + 'm';
-                if (sec < 86400) return Math.floor(sec / 3600) + 'h';
-                return Math.floor(sec / 86400) + 'd';
-            }
+        function timeAgo(dateString) {
+            if (!dateString) return '';
+            const sec = Math.floor((new Date() - new Date(dateString)) / 1000);
+            if (sec < 60) return 'now';
+            if (sec < 3600) return Math.floor(sec / 60) + 'm';
+            if (sec < 86400) return Math.floor(sec / 3600) + 'h';
+            return Math.floor(sec / 86400) + 'd';
+        }
 
-            function animateValue(id, start, end, duration) {
-                if (start === end) return;
-                const obj = $(id);
-                if (!obj) return;
-                let startTimestamp = null;
-                const step = (timestamp) => {
-                    if (!startTimestamp) startTimestamp = timestamp;
-                    const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-                    obj.innerText = Math.floor(progress * (end - start) + start);
-                    if (progress < 1) window.requestAnimationFrame(step);
-                };
-                window.requestAnimationFrame(step);
-            }
-        </script>
+        function animateValue(id, start, end, duration) {
+            if (start === end) return;
+            const obj = $(id);
+            if (!obj) return;
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                obj.innerText = Math.floor(progress * (end - start) + start);
+                if (progress < 1) window.requestAnimationFrame(step);
+            };
+            window.requestAnimationFrame(step);
+        }
+    </script>
 </body>
 
 </html>

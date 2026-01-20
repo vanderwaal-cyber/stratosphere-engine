@@ -29,9 +29,13 @@ class CoinGeckoCollector(BaseCollector):
                 # For speed, let's just get the name/symbol and let validation find the rest?
                 # No, Requirements say: "Extract official website(s)".
                 # Enrichment does that too.
+                # Trending have 'large' image
+                img = coin.get('large') or coin.get('small') or coin.get('thumb')
+                
                 leads.append(RawLead(
                     name=coin['name'],
                     source="coingecko_trending",
+                    profile_image_url=img,
                     extra_data={"symbol": coin['symbol'], "coingecko_id": coin['id']}
                 ))
         except Exception as e:
@@ -48,15 +52,13 @@ class CoinGeckoCollector(BaseCollector):
                 market_data = json.loads(market_json)
                 
                 for coin in market_data:
-                    # Markets endpoint doesn't return Links. 
-                    # We rely on Enrichment to find the site/twitter for established tokens.
-                    # Or we call /coins/{id} for each? That hits rate limits FAST.
-                    # Strategy: Return RawLead with just Name/Symbol. 
-                    # The "Enrichment Engine" step 5 is "Fallback Search Resolver".
-                    # This is efficient.
+                    # Market data usually has 'image' field directly
+                    img = coin.get('image')
+                    
                     leads.append(RawLead(
                         name=coin['name'],
                         source="coingecko_market",
+                        profile_image_url=img,
                         extra_data={"symbol": coin['symbol'], "market_cap": coin['market_cap']}
                     ))
                 
