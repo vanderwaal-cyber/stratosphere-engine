@@ -58,12 +58,15 @@ class ApifyXCollector(BaseCollector):
             
             dataset_id = run["defaultDatasetId"]
             self.logger.info(f"   -> Job Finished. Fetching results from Dataset {dataset_id}...")
+            print(f"DEBUG: Dataset ID: {dataset_id}") # Production Trace
             
             # Fetch results
-            # item_iterator = self.client.dataset(dataset_id).iterate_items()
-            # Convert to list
             def get_items():
-                return list(self.client.dataset(dataset_id).iterate_items())
+                items = list(self.client.dataset(dataset_id).iterate_items())
+                print(f"DEBUG: Items fetched count: {len(items)}") # Production Trace
+                if len(items) > 0:
+                    print(f"DEBUG: First Item Keys: {items[0].keys()}")
+                return items
             
             items = await asyncio.to_thread(get_items)
             
