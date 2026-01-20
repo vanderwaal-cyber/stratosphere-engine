@@ -4,6 +4,15 @@ import asyncio
 
 router = APIRouter()
 
+@router.get("/debug/state")
+async def debug_state():
+    """
+    Returns the internal state of the Stratosphere Engine (Logs, Progress, Errors).
+    Useful for "Black Box" debugging when console access is unavailable.
+    """
+    from core.engine import engine_instance
+    return engine_instance.state
+
 @router.get("/debug/apify")
 async def debug_apify(inject: bool = False):
     """
