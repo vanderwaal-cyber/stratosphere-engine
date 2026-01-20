@@ -24,25 +24,47 @@ class ApifyXCollector(BaseCollector):
 
         self.logger.info("Starting Apify X Scrape (Phoenix Mode)...")
 
-        # Queries matching the user's "Broad X Mode"
-        # We can be aggressive here because Apify handles the browsing.
-        queries = [
-            "launching (solana OR eth OR base) has:links",
-            "new protocol (solana OR eth OR base) has:links",
-            "AI Agent (launching OR live) has:links",
-            "DePIN (launching OR roadmap) has:links",
-            "contract address (solana OR eth OR base) has:links"
+        # DYNAMIC KEYWORD SYSTEM (Phoenix Logic)
+        # Randomly select topics to ensure variety every run
+        import random
+        
+        sectors = [
+            "DePIN", "Real World Assets", "RWA", "AI Agent", "GameFi", 
+            "ZK Rollup", "Layer3", "SocialFi", "Decentralized Science", "DeSci",
+            "Perp Dex", "Yield Optimizer", "Restaking", "EigenLayer", "Liquid Staking",
+            "Privacy Protocol", "On-chain Gaming", "Prediction Market", "Consumer Crypto"
         ]
         
-        # We will use 'apidojo/tweet-scraper' or similar.
-        # Verified Actor: 'apidojo/tweet-scraper' is reliable but 'quacker/twitter-scraper' is also good.
-        # Let's use the standard "Search" input for a scraper.
-        # Using "apidojo/tweet-scraper" (popular).
+        actions = [
+            "launching", "announced", "live", "beta", "whitelist", "presale", 
+            "testnet", "mainnet", "airdrop", "early access", "waitlist"
+        ]
         
-        # Reverting to 'apidojo/tweet-scraper' (ID: 61RPP7dywgiy0JPD0) now that user has PAID plan.
+        networks = [
+            "Solana", "Base", "Arbitrum", "Monad", "Berachain", "Sei", "Sui", "Aptos"
+        ]
+        
+        # Generator: Create 5 unique comprehensive queries
+        queries = []
+        for _ in range(5):
+            sector = random.choice(sectors)
+            action = random.choice(actions)
+            # 50% chance to append a network for specificity
+            query = f'"{sector}" "{action}" has:links'
+            if random.random() > 0.5:
+                net = random.choice(networks)
+                query = f'"{sector}" "{action}" "{net}" has:links'
+            
+            queries.append(query)
+            
+        # Add one "Wildcard" query for general discovery
+        queries.append(f'("new protocol" OR "new project") ({random.choice(networks)}) has:links')
+        
+        self.logger.info(f"Generated Dynamic Queries: {queries}")
+
         run_input = {
-            "searchTerms": queries, # Changed from 'queries' to 'searchTerms'
-            "maxItems": 500,
+            "searchTerms": queries, 
+            "maxItems": 500, # Aiming for user's goal of 100+ leads
             "sort": "Latest",
             "tweetLanguage": "en"
         }
