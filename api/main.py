@@ -266,7 +266,9 @@ async def analyze_lead(lead_id: int, db: Session = Depends(get_db)):
                  lead.twitter_handle = enriched_data["twitter_handle"]
 
         # 2. Real AI Analysis via NeuroLink (GPT-4)
-        drafter = DMDrafter()
+        from core.config import get_settings
+        settings = get_settings()
+        drafter = DMDrafter(api_key=settings.OPENAI_API_KEY)
         
         # Prepare Context
         project_context = {

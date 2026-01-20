@@ -73,19 +73,22 @@ class CoinMarketCapCollector(BaseCollector):
                     
                     # Extract Socials
                     twitter = None
-                    if urls.get("twitter") and len(urls["twitter"]) > 0:
+                    if urls.get("twitter") and isinstance(urls["twitter"], list) and len(urls["twitter"]) > 0:
                         twitter = urls["twitter"][0]
                     
                     telegram = None
-                    if urls.get("chat"):
+                    if urls.get("chat") and isinstance(urls["chat"], list):
                         for chat in urls["chat"]:
                             if "t.me" in chat or "telegram" in chat:
                                 telegram = chat
                                 break
                     
                     website = None
-                    if urls.get("website") and len(urls["website"]) > 0:
+                    if urls.get("website") and isinstance(urls["website"], list) and len(urls["website"]) > 0:
                         website = urls["website"][0]
+
+                    # Extract Logo (Profile Picture)
+                    logo = details.get("logo")
                         
                     # Extract Tags
                     tags = coin.get("tags", [])
@@ -99,6 +102,7 @@ class CoinMarketCapCollector(BaseCollector):
                         source="coinmarketcap",
                         website=website,
                         twitter_handle=twitter,
+                        profile_image_url=logo, # Explicitly pass the CMC logo
                         extra_data={
                             "symbol": coin["symbol"],
                             "description": details.get("description"),

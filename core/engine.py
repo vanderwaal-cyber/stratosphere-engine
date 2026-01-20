@@ -257,7 +257,7 @@ class StratosphereEngine:
                 chains=chains_str,
                 tags=tags_str,
                 launch_date=launch_date,
-                profile_image_url=raw.profile_image_url
+                profile_image_url=raw.profile_image_url 
                 or (norm_handle and f"https://unavatar.io/twitter/{norm_handle}")
                 or (norm_domain and f"https://logo.clearbit.com/{norm_domain}")
                 or f"https://ui-avatars.com/api/?name={urllib.parse.quote(raw.name)}&background=random&color=fff",
