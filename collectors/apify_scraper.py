@@ -50,15 +50,23 @@ class ApifyXCollector(BaseCollector):
             sector = random.choice(sectors)
             action = random.choice(actions)
             # 50% chance to append a network for specificity
-            query = f'"{sector}" "{action}" has:links'
+            # RELAXED: Removed quotes to broaden search matches
+            # RELAXED: Removed 'has:links' from some queries to catch text-only announcements
+            
             if random.random() > 0.5:
-                net = random.choice(networks)
-                query = f'"{sector}" "{action}" "{net}" has:links'
+                query = f"{sector} {action}"  # Broadest
+            else:
+                query = f"{sector} {action} has:links" # Specific
+                
+            if random.random() > 0.7:
+                 net = random.choice(networks)
+                 query += f" {net}"
             
             queries.append(query)
             
-        # Add one "Wildcard" query for general discovery
-        queries.append(f'("new protocol" OR "new project") ({random.choice(networks)}) has:links')
+        # Add one "Safety Net" query to GUARANTEE results
+        queries.append("crypto launching")
+        queries.append("new crypto project")
         
         self.logger.info(f"Generated Dynamic Queries: {queries}")
 
